@@ -3,6 +3,7 @@ import {
   Award,
   BookOpen,
   Bot,
+  BrainCircuit,
   Home,
   MessageSquare,
   PanelLeft,

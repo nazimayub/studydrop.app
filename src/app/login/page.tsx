@@ -10,7 +10,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
-import { BrainCircuit } from "lucide-react"
 
 export default function LoginPage() {
   return (

@@ -47,13 +47,15 @@ export default function ForumPage() {
     <div className="grid gap-6">
       <div className="flex items-center justify-between">
         <div>
-            <h1 className="text-3xl font-bold font-headline">Q&amp;A Forum</h1>
+            <h1 className="text-3xl font-bold font-headline">Q&A Forum</h1>
             <p className="text-muted-foreground">Ask questions, get answers, and help others.</p>
         </div>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Ask Question
-        </Button>
+        <Link href="/forum/new">
+          <Button>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Ask Question
+          </Button>
+        </Link>
       </div>
       <div className="flex items-center gap-4">
           <Input placeholder="Search questions..." className="flex-1"/>

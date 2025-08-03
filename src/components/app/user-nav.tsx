@@ -40,7 +40,7 @@ export function UserNav() {
               <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
             </DropdownMenuItem>
           </Link>
-          <Link href="/account">
+          <Link href="/settings">
             <DropdownMenuItem>
               Settings
               <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>

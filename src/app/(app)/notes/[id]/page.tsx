@@ -32,12 +32,6 @@ Key concepts in quantum physics include:
                 Subject: {note.subject} | Created on: {note.date}
               </CardDescription>
             </div>
-            <Link href={{ pathname: '/summarizer', query: { notes: note.content }}}>
-              <Button>
-                <Bot className="mr-2 h-4 w-4" />
-                Summarize with AI
-              </Button>
-            </Link>
           </div>
         </CardHeader>
         <CardContent>

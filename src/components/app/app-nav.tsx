@@ -8,13 +8,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { Home, NotebookText, Bot, MessageSquare, Award } from "lucide-react"
+import { Home, NotebookText, MessageSquare, Award } from "lucide-react"
 
 const navItems = [
     { href: "/dashboard", icon: Home, label: "Dashboard" },
     { href: "/notes", icon: NotebookText, label: "Notes" },
-    { href: "/summarizer", icon: Bot, label: "AI Summarizer" },
-    { href: "/forum", icon: MessageSquare, label: "Q&amp;A Forum" },
+    { href: "/forum", icon: MessageSquare, label: "Q&A Forum" },
     { href: "/rewards", icon: Award, label: "Rewards" },
 ]
 

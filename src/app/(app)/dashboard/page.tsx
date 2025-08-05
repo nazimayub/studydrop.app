@@ -184,14 +184,11 @@ export default function Dashboard() {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
-               <Link href="/notes">
+               <Link href="/notes/new">
                 <Button className="w-full">Create New Note</Button>
                </Link>
-               <Link href="/forum">
+               <Link href="/forum/new">
                 <Button variant="outline" className="w-full">Ask a Question</Button>
-               </Link>
-               <Link href="/summarizer">
-                <Button variant="outline" className="w-full">Summarize Text</Button>
                </Link>
             </CardContent>
           </Card>

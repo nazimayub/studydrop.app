@@ -2,7 +2,6 @@ import Link from "next/link"
 import {
   Award,
   BookOpen,
-  Bot,
   BrainCircuit,
   Home,
   MessageSquare,
@@ -64,7 +63,7 @@ export default function AppLayout({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link
-                  href="/settings"
+                  href="/account"
                   className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
                 >
                   <Settings className="h-5 w-5" />
@@ -96,7 +95,7 @@ export default function AppLayout({
                 </Link>
                 <AppNav isMobile={true}/>
                 <Link
-                  href="/settings"
+                  href="/account"
                   className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
                 >
                   <Settings className="h-5 w-5" />

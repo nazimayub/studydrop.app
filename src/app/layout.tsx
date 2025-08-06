@@ -7,7 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Analytics } from '@vercel/analytics/react';
 
 export const metadata: Metadata = {
-  title: 'Study Buddy',
+  title: 'Studydrop',
   description: 'Your AI-powered study partner.',
 };
 

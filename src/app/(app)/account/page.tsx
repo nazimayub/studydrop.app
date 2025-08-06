@@ -29,13 +29,13 @@ export default function AccountPage() {
                 <div className="flex items-center gap-4">
                     <Avatar className="h-20 w-20">
                         <AvatarImage src="https://placehold.co/80x80.png" />
-                        <AvatarFallback>SB</AvatarFallback>
+                        <AvatarFallback>SD</AvatarFallback>
                     </Avatar>
                     <Button variant="outline">Change Avatar</Button>
                 </div>
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
-                <Input id="name" defaultValue="Study Buddy" />
+                <Input id="name" defaultValue="Studydrop" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>

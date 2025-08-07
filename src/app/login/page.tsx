@@ -1,4 +1,11 @@
+
+"use client"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { signInWithEmailAndPassword } from "firebase/auth"
+import { auth } from "@/lib/firebase/firebase"
+
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -12,6 +19,19 @@ import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
 
 export default function LoginPage() {
+    const [email, setEmail] = useState("")
+    const [password, setPassword] = useState("")
+    const router = useRouter()
+
+    const handleLogin = async () => {
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            router.push("/dashboard");
+        } catch (error) {
+            console.error("Error logging in: ", error);
+        }
+    }
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-secondary/50 p-4">
       <div className="mb-8">
@@ -35,6 +55,8 @@ export default function LoginPage() {
                 type="email"
                 placeholder="m@example.com"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
@@ -47,13 +69,11 @@ export default function LoginPage() {
                   Forgot your password?
                 </Link>
               </div>
-              <Input id="password" type="password" required />
+              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
-            <Link href="/dashboard">
-                <Button type="submit" className="w-full">
-                Login
-                </Button>
-            </Link>
+            <Button onClick={handleLogin} className="w-full">
+            Login
+            </Button>
             <Button variant="outline" className="w-full">
               Login with Google
             </Button>

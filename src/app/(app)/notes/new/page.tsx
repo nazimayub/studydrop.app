@@ -1,3 +1,11 @@
+
+"use client"
+
+import { useState } from "react";
+import { collection, addDoc } from "firebase/firestore";
+import { useRouter } from "next/navigation";
+import { db } from "@/lib/firebase/firebase";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -5,6 +13,28 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function NewNotePage() {
+    const [title, setTitle] = useState("");
+    const [subject, setSubject] = useState("");
+    const [noteClass, setNoteClass] = useState("");
+    const [content, setContent] = useState("");
+    const router = useRouter();
+
+    const handleCreateNote = async () => {
+        try {
+            await addDoc(collection(db, "notes"), {
+                title,
+                subject,
+                class: noteClass,
+                content,
+                date: new Date().toISOString(),
+                status: "Published",
+            });
+            router.push("/notes");
+        } catch (error) {
+            console.error("Error adding document: ", error);
+        }
+    };
+
     return (
         <div className="grid gap-6">
             <Card>
@@ -15,23 +45,23 @@ export default function NewNotePage() {
                 <CardContent className="grid gap-6">
                     <div className="grid gap-2">
                         <Label htmlFor="title">Title</Label>
-                        <Input id="title" placeholder="Note title" />
+                        <Input id="title" placeholder="Note title" value={title} onChange={(e) => setTitle(e.target.value)} />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="subject">Subject</Label>
-                        <Input id="subject" placeholder="e.g. Physics, History" />
+                        <Input id="subject" placeholder="e.g. Physics, History" value={subject} onChange={(e) => setSubject(e.target.value)} />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="class">Class</Label>
-                        <Input id="class" placeholder="e.g. PHYS 101, HIST 230" />
+                        <Input id="class" placeholder="e.g. PHYS 101, HIST 230" value={noteClass} onChange={(e) => setNoteClass(e.target.value)} />
                     </div>
                      <div className="grid gap-2">
-                        <Label htmlFor="description">Description</Label>
-                        <Textarea id="description" placeholder="Write your note here..." rows={10} />
+                        <Label htmlFor="description">Content</Label>
+                        <Textarea id="description" placeholder="Write your note here..." rows={10} value={content} onChange={(e) => setContent(e.target.value)} />
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end">
-                    <Button>Create Note</Button>
+                    <Button onClick={handleCreateNote}>Create Note</Button>
                 </CardFooter>
             </Card>
         </div>

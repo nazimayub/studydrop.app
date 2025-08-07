@@ -1,41 +1,85 @@
+
+"use client"
+import { useEffect, useState } from "react";
+import { doc, getDoc, collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase/firebase";
+
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { ThumbsUp } from "lucide-react";
 
-const post = {
-    id: "1",
-    title: "How does the Heinsenberg Uncertainty Principle work in practice?",
-    author: "Alice Johnson",
-    avatar: "https://placehold.co/40x40.png",
-    fallback: "AJ",
-    date: "2 days ago",
-    content: "I'm having trouble understanding the practical implications of the Heisenberg Uncertainty Principle. I get the basic idea that you can't know both the position and momentum of a particle with perfect accuracy, but how does this manifest in real-world experiments or technology? Are there any simple examples that illustrate this concept well?",
-};
+interface Post {
+    id: string;
+    title: string;
+    author: string;
+    avatar: string;
+    fallback: string;
+    date: any;
+    content: string;
+}
 
-const answers = [
-    {
-        id: "1",
-        author: "Bob Williams",
-        avatar: "https://placehold.co/40x40.png",
-        fallback: "BW",
-        date: "1 day ago",
-        content: "A great example is in scanning tunneling microscopes (STMs). To get a very precise image (position) of an atom, the microscope's tip has to interact with it, which involves transferring momentum. This interaction inherently changes the atom's momentum, making it uncertain. So, the act of observing the position disturbs the momentum, exactly as the principle predicts.",
-        upvotes: 22,
-    },
-    {
-        id: "2",
-        author: "Charlie Brown",
-        avatar: "https://placehold.co/40x40.png",
-        fallback: "CB",
-        date: "22 hours ago",
-        content: "Think about trying to measure the position of an electron with a photon of light. To get a precise measurement, you need a short-wavelength photon. But short-wavelength photons have high energy and momentum. When this photon hits the electron, it transfers a lot of momentum to it in an unpredictable way, making the electron's momentum uncertain. If you use a long-wavelength (low momentum) photon, you don't disturb the electron's momentum much, but your measurement of its position becomes fuzzy. You can't win!",
-        upvotes: 48,
-    }
-];
+interface Answer {
+    id: string;
+    author: string;
+    avatar: string;
+    fallback: string;
+    date: any;
+    content: string;
+    upvotes: number;
+}
 
 export default function ForumPostPage({ params }: { params: { id: string } }) {
+    const [post, setPost] = useState<Post | null>(null);
+    const [answers, setAnswers] = useState<Answer[]>([]);
+    const [newAnswer, setNewAnswer] = useState("");
+
+    useEffect(() => {
+        const fetchPostAndAnswers = async () => {
+            const postDoc = doc(db, "questions", params.id);
+            const postSnapshot = await getDoc(postDoc);
+            if (postSnapshot.exists()) {
+                const postData = postSnapshot.data();
+                setPost({ id: postSnapshot.id, ...postData } as Post);
+            }
+
+            const answersCollection = collection(db, "questions", params.id, "answers");
+            const answersSnapshot = await getDocs(answersCollection);
+            const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer));
+            setAnswers(answersList);
+        };
+
+        fetchPostAndAnswers();
+    }, [params.id]);
+
+    const handlePostAnswer = async () => {
+        if (!newAnswer.trim()) return;
+
+        try {
+            await addDoc(collection(db, "questions", params.id, "answers"), {
+                author: "Anonymous", // Replace with actual user later
+                avatar: "https://placehold.co/40x40.png",
+                fallback: "A",
+                content: newAnswer,
+                date: serverTimestamp(),
+                upvotes: 0,
+            });
+            setNewAnswer("");
+            // Refetch answers
+            const answersCollection = collection(db, "questions", params.id, "answers");
+            const answersSnapshot = await getDocs(answersCollection);
+            const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer));
+            setAnswers(answersList);
+        } catch (error) {
+            console.error("Error adding document: ", error);
+        }
+    };
+    
+    if (!post) {
+        return <div>Loading...</div>;
+    }
+
     return (
         <div className="grid gap-6">
             <Card>
@@ -48,7 +92,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                         </Avatar>
                         <span>{post.author}</span>
                         <span>&middot;</span>
-                        <span>{post.date}</span>
+                        <span>{post.date && new Date(post.date.seconds * 1000).toLocaleDateString()}</span>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -69,7 +113,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                             <div>
                                 <div className="flex items-center gap-2">
                                     <span className="font-semibold">{answer.author}</span>
-                                    <span className="text-sm text-muted-foreground">&middot; {answer.date}</span>
+                                    <span className="text-sm text-muted-foreground">&middot; {answer.date && new Date(answer.date.seconds * 1000).toLocaleDateString()}</span>
                                 </div>
                                 <p className="mt-2">{answer.content}</p>
                             </div>
@@ -89,10 +133,10 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                     <CardTitle className="font-headline">Your Answer</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Textarea placeholder="Type your answer here." rows={5} />
+                    <Textarea placeholder="Type your answer here." rows={5} value={newAnswer} onChange={(e) => setNewAnswer(e.target.value)} />
                 </CardContent>
                 <CardFooter>
-                    <Button>Post Answer</Button>
+                    <Button onClick={handlePostAnswer}>Post Answer</Button>
                 </CardFooter>
             </Card>
         </div>

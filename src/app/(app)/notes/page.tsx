@@ -1,30 +1,17 @@
-import Image from "next/image"
+
+"use client"
+
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
   File,
-  Home,
-  LineChart,
   ListFilter,
   MoreHorizontal,
-  Package,
-  Package2,
-  PanelLeft,
   PlusCircle,
-  Search,
-  Settings,
-  ShoppingCart,
-  Users2,
 } from "lucide-react"
+import { collection, getDocs } from "firebase/firestore"
 
 import { Badge } from "@/components/ui/badge"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -43,8 +30,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import {
   Table,
   TableBody,
@@ -59,46 +44,31 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import { db } from "@/lib/firebase/firebase"
 
-const notesData = [
-  {
-    id: "1",
-    title: "Quantum Physics Fundamentals",
-    subject: "Physics",
-    status: "Published",
-    date: "2023-06-23",
-  },
-  {
-    id: "2",
-    title: "The French Revolution",
-    subject: "History",
-    status: "Draft",
-    date: "2023-10-11",
-  },
-  {
-    id: "3",
-    title: "Organic Chemistry Reactions",
-    subject: "Chemistry",
-    status: "Published",
-    date: "2024-01-05",
-  },
-    {
-    id: "4",
-    title: "Introduction to Machine Learning",
-    subject: "Computer Science",
-    status: "Archived",
-    date: "2023-02-14",
-  },
-   {
-    id: "5",
-    title: "Shakespeare's Sonnets",
-    subject: "Literature",
-    status: "Published",
-    date: "2023-09-30",
-  },
-]
+interface Note {
+  id: string;
+  title: string;
+  subject: string;
+  status: string;
+  date: string;
+}
 
 export default function NotesPage() {
+    const [notesData, setNotesData] = useState<Note[]>([]);
+
+    useEffect(() => {
+        const fetchNotes = async () => {
+            const notesCollection = collection(db, "notes");
+            const notesSnapshot = await getDocs(notesCollection);
+            const notesList = notesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
+            setNotesData(notesList);
+        };
+
+        fetchNotes();
+    }, []);
+
+
   return (
     <Tabs defaultValue="all">
       <div className="flex items-center">
@@ -181,7 +151,7 @@ export default function NotesPage() {
                         </Badge>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                        {note.date}
+                        {new Date(note.date).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
                         <DropdownMenu>
@@ -209,7 +179,7 @@ export default function NotesPage() {
           </CardContent>
           <CardFooter>
             <div className="text-xs text-muted-foreground">
-              Showing <strong>1-5</strong> of <strong>{notesData.length}</strong> notes
+              Showing <strong>1-{notesData.length}</strong> of <strong>{notesData.length}</strong> notes
             </div>
           </CardFooter>
         </Card>

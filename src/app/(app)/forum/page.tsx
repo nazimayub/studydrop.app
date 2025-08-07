@@ -1,48 +1,44 @@
+
+"use client"
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PlusCircle, MessageSquare, Eye, ThumbsUp } from "lucide-react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase/firebase";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
-const forumPosts = [
-  {
-    id: "1",
-    title: "How does the Heinsenberg Uncertainty Principle work in practice?",
-    author: "Alice Johnson",
-    avatar: "https://placehold.co/40x40.png",
-    fallback: "AJ",
-    tags: ["physics", "quantum"],
-    views: 128,
-    replies: 4,
-    upvotes: 15,
-  },
-  {
-    id: "2",
-    title: "What are the main causes of the fall of the Roman Empire?",
-    author: "Bob Williams",
-    avatar: "https://placehold.co/40x40.png",
-    fallback: "BW",
-    tags: ["history", "rome"],
-    views: 256,
-    replies: 12,
-    upvotes: 45,
-  },
-   {
-    id: "3",
-    title: "Can someone explain the concept of closures in JavaScript?",
-    author: "Charlie Brown",
-    avatar: "https://placehold.co/40x40.png",
-    fallback: "CB",
-    tags: ["programming", "javascript"],
-    views: 512,
-    replies: 8,
-    upvotes: 72,
-  },
-];
+interface ForumPost {
+    id: string;
+    title: string;
+    author: string;
+    avatar: string;
+    fallback: string;
+    tags: string[];
+    views: number;
+    replies: number;
+    upvotes: number;
+}
 
 export default function ForumPage() {
+    const [forumPosts, setForumPosts] = useState<ForumPost[]>([]);
+
+    useEffect(() => {
+        const fetchPosts = async () => {
+            const postsCollection = collection(db, "questions");
+            const postsSnapshot = await getDocs(postsCollection);
+            const postsList = postsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ForumPost));
+            setForumPosts(postsList);
+        };
+
+        fetchPosts();
+    }, []);
+
   return (
     <div className="grid gap-6">
       <div className="flex items-center justify-between">
@@ -80,7 +76,7 @@ export default function ForumPage() {
             </CardHeader>
             <CardContent>
               <div className="flex space-x-2">
-                {post.tags.map(tag => (
+                {post.tags && post.tags.map(tag => (
                   <Badge key={tag} variant="secondary">{tag}</Badge>
                 ))}
               </div>

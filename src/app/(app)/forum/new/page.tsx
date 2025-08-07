@@ -1,3 +1,11 @@
+
+"use client"
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase/firebase";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,6 +14,32 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export default function NewQuestionPage() {
+    const [title, setTitle] = useState("");
+    const [tags, setTags] = useState("");
+    const [description, setDescription] = useState("");
+    const [isAnonymous, setIsAnonymous] = useState(false);
+    const router = useRouter();
+
+    const handlePostQuestion = async () => {
+        try {
+            await addDoc(collection(db, "questions"), {
+                title,
+                tags: tags.split(",").map(tag => tag.trim()),
+                content: description,
+                author: isAnonymous ? "Anonymous" : "Current User", // Replace with actual user
+                avatar: "https://placehold.co/40x40.png",
+                fallback: isAnonymous ? "A" : "CU",
+                date: serverTimestamp(),
+                views: 0,
+                replies: 0,
+                upvotes: 0,
+            });
+            router.push("/forum");
+        } catch (error) {
+            console.error("Error adding document: ", error);
+        }
+    };
+
     return (
         <div className="grid gap-6">
             <Card>
@@ -16,23 +50,23 @@ export default function NewQuestionPage() {
                 <CardContent className="grid gap-6">
                     <div className="grid gap-2">
                         <Label htmlFor="title">Question / Title</Label>
-                        <Input id="title" placeholder="What is your question?" />
+                        <Input id="title" placeholder="What is your question?" value={title} onChange={(e) => setTitle(e.target.value)} />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="tags">Tags</Label>
-                        <Input id="tags" placeholder="e.g. physics, javascript, history" />
+                        <Input id="tags" placeholder="e.g. physics, javascript, history" value={tags} onChange={(e) => setTags(e.target.value)} />
                     </div>
                      <div className="grid gap-2">
                         <Label htmlFor="description">Description</Label>
-                        <Textarea id="description" placeholder="Add more details about your question..." rows={10} />
+                        <Textarea id="description" placeholder="Add more details about your question..." rows={10} value={description} onChange={(e) => setDescription(e.target.value)} />
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Checkbox id="anonymous" />
+                        <Checkbox id="anonymous" checked={isAnonymous} onCheckedChange={() => setIsAnonymous(!isAnonymous)} />
                         <Label htmlFor="anonymous">Post anonymously</Label>
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end">
-                    <Button>Post Question</Button>
+                    <Button onClick={handlePostQuestion}>Post Question</Button>
                 </CardFooter>
             </Card>
         </div>

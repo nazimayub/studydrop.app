@@ -1,3 +1,10 @@
+
+"use client"
+import { useState, useEffect } from "react";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth, db } from "@/lib/firebase/firebase";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +15,51 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 
 export default function AccountPage() {
+    const [user, setUser] = useState<any>(null);
+    const [userData, setUserData] = useState<any>({ name: "", email: "", bio: "" });
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            if (currentUser) {
+                setUser(currentUser);
+                const fetchUserData = async () => {
+                    const userDoc = doc(db, "users", currentUser.uid);
+                    const userSnapshot = await getDoc(userDoc);
+                    if (userSnapshot.exists()) {
+                        const data = userSnapshot.data();
+                        setUserData({ name: `${data.firstName} ${data.lastName}`, email: data.email, bio: data.bio || "" });
+                    }
+                };
+                fetchUserData();
+            } else {
+                setUser(null);
+                setUserData({ name: "", email: "", bio: "" });
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
+    const handleSaveChanges = async () => {
+        if (user) {
+            const userDoc = doc(db, "users", user.uid);
+            const [firstName, ...lastNameParts] = userData.name.split(" ");
+            const lastName = lastNameParts.join(" ");
+
+            await setDoc(userDoc, { 
+                firstName,
+                lastName,
+                email: userData.email,
+                bio: userData.bio 
+            }, { merge: true });
+            alert("Changes saved!");
+        }
+    };
+    
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { id, value } = e.target;
+        setUserData((prev: any) => ({ ...prev, [id]: value }));
+    };
+
   return (
     <div className="grid gap-6">
       <div>
@@ -35,19 +87,19 @@ export default function AccountPage() {
                 </div>
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
-                <Input id="name" defaultValue="Studydrop" />
+                <Input id="name" value={userData.name} onChange={handleInputChange} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue="student@example.com" />
+                <Input id="email" type="email" value={userData.email} onChange={handleInputChange} />
               </div>
                <div className="space-y-2">
                 <Label htmlFor="bio">Bio</Label>
-                <Textarea id="bio" placeholder="Tell us a little bit about yourself" defaultValue="A passionate learner exploring the world of science and technology."/>
+                <Textarea id="bio" placeholder="Tell us a little bit about yourself" value={userData.bio} onChange={handleInputChange}/>
               </div>
             </CardContent>
           </Card>
-          <Button className="mt-4">Save Changes</Button>
+          <Button className="mt-4" onClick={handleSaveChanges}>Save Changes</Button>
         </TabsContent>
         <TabsContent value="notifications">
           <Card>

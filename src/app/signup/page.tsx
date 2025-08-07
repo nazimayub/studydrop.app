@@ -3,9 +3,9 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
-import { doc, setDoc } from "firebase/firestore"
-import { auth, db } from "@/lib/firebase/firebase"
+import { createUserWithEmailAndPassword, updateProfile, signInWithPopup } from "firebase/auth"
+import { doc, setDoc, getDoc } from "firebase/firestore"
+import { auth, db, googleProvider } from "@/lib/firebase/firebase"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -41,13 +41,45 @@ export default function SignupPage() {
                 email,
                 points: 0,
                 bio: "",
+                photoURL: user.photoURL || ""
             });
 
             router.push("/dashboard");
         } catch (error) {
             console.error("Error signing up: ", error);
+            alert("Failed to sign up. Please try again.");
         }
     }
+
+    const handleGoogleSignUp = async () => {
+        try {
+            const result = await signInWithPopup(auth, googleProvider);
+            const user = result.user;
+
+            const userDocRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (!userDoc.exists()) {
+                const nameParts = user.displayName?.split(" ") || ["", ""];
+                const firstName = nameParts[0];
+                const lastName = nameParts.slice(1).join(" ");
+
+                await setDoc(userDocRef, {
+                    firstName,
+                    lastName,
+                    email: user.email,
+                    points: 0,
+                    bio: "",
+                    photoURL: user.photoURL || ""
+                });
+            }
+
+            router.push("/dashboard");
+        } catch (error) {
+            console.error("Error with Google signup: ", error);
+            alert("Failed to sign up with Google.");
+        }
+    };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-secondary/50 p-4">
@@ -93,7 +125,7 @@ export default function SignupPage() {
             <Button onClick={handleSignUp} className="w-full">
             Create an account
             </Button>
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full" onClick={handleGoogleSignUp}>
               Sign up with Google
             </Button>
           </div>

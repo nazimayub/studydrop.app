@@ -3,8 +3,8 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { signInWithEmailAndPassword } from "firebase/auth"
-import { auth } from "@/lib/firebase/firebase"
+import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth"
+import { auth, googleProvider } from "@/lib/firebase/firebase"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -29,6 +29,17 @@ export default function LoginPage() {
             router.push("/dashboard");
         } catch (error) {
             console.error("Error logging in: ", error);
+            alert("Failed to log in. Please check your credentials.");
+        }
+    }
+
+    const handleGoogleLogin = async () => {
+        try {
+            await signInWithPopup(auth, googleProvider);
+            router.push("/dashboard");
+        } catch (error) {
+            console.error("Error with Google login: ", error);
+            alert("Failed to log in with Google.");
         }
     }
 
@@ -74,7 +85,7 @@ export default function LoginPage() {
             <Button onClick={handleLogin} className="w-full">
             Login
             </Button>
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full" onClick={handleGoogleLogin}>
               Login with Google
             </Button>
           </div>

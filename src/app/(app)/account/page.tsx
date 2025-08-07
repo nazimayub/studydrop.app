@@ -2,7 +2,7 @@
 "use client"
 import { useState, useEffect, ChangeEvent } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { onAuthStateChanged, updateProfile } from "firebase/auth";
+import { updateProfile } from "firebase/auth";
 import { auth, db, storage } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -16,9 +16,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 
+interface UserData {
+    name: string;
+    email: string;
+    bio: string;
+    photoURL: string;
+}
+
 export default function AccountPage() {
     const [user] = useAuthState(auth);
-    const [userData, setUserData] = useState<any>({ name: "", email: "", bio: "", photoURL: "" });
+    const [userData, setUserData] = useState<UserData>({ name: "", email: "", bio: "", photoURL: "" });
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
     useEffect(() => {
@@ -29,10 +36,10 @@ export default function AccountPage() {
                 if (userSnapshot.exists()) {
                     const data = userSnapshot.data();
                     setUserData({ 
-                        name: `${data.firstName} ${data.lastName}`, 
-                        email: data.email, 
+                        name: user.displayName || `${data.firstName} ${data.lastName}`, 
+                        email: user.email || data.email, 
                         bio: data.bio || "",
-                        photoURL: user.photoURL || ""
+                        photoURL: user.photoURL || data.photoURL || ""
                     });
                 }
             };
@@ -42,25 +49,30 @@ export default function AccountPage() {
     
     const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            setAvatarFile(e.target.files[0]);
+            const file = e.target.files[0];
+            setAvatarFile(file);
             const reader = new FileReader();
             reader.onload = (event) => {
-                setUserData((prev: any) => ({ ...prev, photoURL: event.target?.result as string }));
+                setUserData((prev) => ({ ...prev, photoURL: event.target?.result as string }));
             }
-            reader.readAsDataURL(e.target.files[0]);
+            reader.readAsDataURL(file);
         }
     }
 
     const handleSaveChanges = async () => {
         if (user) {
-            let photoURL = user.photoURL;
+            let photoURL = userData.photoURL;
 
             if (avatarFile) {
                 const storageRef = ref(storage, `avatars/${user.uid}`);
                 await uploadBytes(storageRef, avatarFile);
                 photoURL = await getDownloadURL(storageRef);
-                await updateProfile(user, { photoURL });
             }
+            
+            await updateProfile(user, {
+                displayName: userData.name,
+                photoURL: photoURL
+            })
 
             const userDoc = doc(db, "users", user.uid);
             const [firstName, ...lastNameParts] = userData.name.split(" ");
@@ -74,10 +86,6 @@ export default function AccountPage() {
                 photoURL: photoURL
             }, { merge: true });
 
-            await updateProfile(user, {
-                displayName: `${firstName} ${lastName}`,
-                photoURL: photoURL
-            })
 
             alert("Changes saved!");
         }
@@ -85,13 +93,13 @@ export default function AccountPage() {
     
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { id, value } = e.target;
-        setUserData((prev: any) => ({ ...prev, [id]: value }));
+        setUserData((prev) => ({ ...prev, [id]: value }));
     };
 
     const getFallback = () => {
         if (userData.name) {
             const parts = userData.name.split(" ");
-            if (parts.length > 1) {
+            if (parts.length > 1 && parts[0] && parts[1]) {
                 return `${parts[0][0]}${parts[1][0]}`;
             }
             return userData.name.substring(0, 2);
@@ -131,7 +139,7 @@ export default function AccountPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={userData.email} onChange={handleInputChange} />
+                <Input id="email" type="email" value={userData.email} onChange={handleInputChange} disabled/>
               </div>
                <div className="space-y-2">
                 <Label htmlFor="bio">Bio</Label>

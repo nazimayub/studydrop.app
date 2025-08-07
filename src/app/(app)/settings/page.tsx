@@ -1,3 +1,7 @@
+
+"use client"
+
+import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,6 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function SettingsPage() {
+  const { theme, setTheme } = useTheme();
+
   return (
     <div className="grid gap-6">
       <div>
@@ -21,7 +27,7 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
                  <div className="space-y-2">
                     <Label>Theme</Label>
-                     <Select defaultValue="system">
+                     <Select value={theme} onValueChange={setTheme}>
                         <SelectTrigger className="w-[280px]">
                             <SelectValue placeholder="Select theme" />
                         </SelectTrigger>

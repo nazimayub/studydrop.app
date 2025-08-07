@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { PlusCircle, MessageSquare, Eye, ThumbsUp } from "lucide-react";
+import { PlusCircle, MessageSquare, Eye, ThumbsUp, X } from "lucide-react";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
 
@@ -12,6 +12,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+
 
 interface ForumPost {
     id: string;
@@ -28,20 +32,50 @@ interface ForumPost {
 }
 
 export default function ForumPage() {
-    const [forumPosts, setForumPosts] = useState<ForumPost[]>([]);
+    const [allPosts, setAllPosts] = useState<ForumPost[]>([]);
+    const [filteredPosts, setFilteredPosts] = useState<ForumPost[]>([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [allTags, setAllTags] = useState<string[]>([]);
+    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
 
     useEffect(() => {
-        const fetchPosts = async () => {
+        const fetchPostsAndTags = async () => {
             const postsCollection = collection(db, "questions");
             const q = query(postsCollection, orderBy("date", "desc"));
             const postsSnapshot = await getDocs(q);
             const postsList = postsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ForumPost));
-            setForumPosts(postsList);
+            setAllPosts(postsList);
+
+            const tagsSet = new Set<string>();
+            postsList.forEach(post => {
+                post.tags?.forEach(tag => tagsSet.add(tag));
+            });
+            setAllTags(Array.from(tagsSet).sort());
         };
 
-        fetchPosts();
+        fetchPostsAndTags();
     }, []);
 
+    useEffect(() => {
+        let posts = allPosts;
+        if (searchTerm) {
+            posts = posts.filter(post => post.title.toLowerCase().includes(searchTerm.toLowerCase()));
+        }
+        if (selectedTags.length > 0) {
+            posts = posts.filter(post => selectedTags.every(tag => post.tags.includes(tag)));
+        }
+        setFilteredPosts(posts);
+    }, [searchTerm, selectedTags, allPosts]);
+
+    const handleTagSelectionChange = (tag: string, checked: boolean | 'indeterminate') => {
+        if (checked) {
+            setSelectedTags(prev => [...prev, tag]);
+        } else {
+            setSelectedTags(prev => prev.filter(t => t !== tag));
+        }
+    };
+    
     const UserLink = ({ authorId, children }: { authorId?: string, children: React.ReactNode }) => {
         return authorId ? <Link href={`/users/${authorId}`} className="hover:underline">{children}</Link> : <>{children}</>;
     };
@@ -61,11 +95,47 @@ export default function ForumPage() {
         </Link>
       </div>
       <div className="flex items-center gap-4">
-          <Input placeholder="Search questions..." className="flex-1"/>
-          <Button variant="outline">Filter by Tag</Button>
+          <Input placeholder="Search questions..." className="flex-1" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}/>
+          <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">Filter by Tag</Button>
+              </DialogTrigger>
+              <DialogContent>
+                  <DialogHeader>
+                      <DialogTitle>Filter by Tags</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid grid-cols-2 gap-4 py-4">
+                      {allTags.map(tag => (
+                          <div key={tag} className="flex items-center space-x-2">
+                              <Checkbox 
+                                  id={`tag-${tag}`} 
+                                  checked={selectedTags.includes(tag)}
+                                  onCheckedChange={(checked) => handleTagSelectionChange(tag, checked)}
+                              />
+                              <Label htmlFor={`tag-${tag}`}>{tag}</Label>
+                          </div>
+                      ))}
+                  </div>
+                  <Button onClick={() => setIsFilterDialogOpen(false)}>Apply Filters</Button>
+              </DialogContent>
+          </Dialog>
       </div>
+       {selectedTags.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-medium">Active filters:</span>
+              {selectedTags.map(tag => (
+                  <Badge key={tag} variant="secondary">
+                      {tag}
+                      <button className="ml-1" onClick={() => handleTagSelectionChange(tag, false)}>
+                        <X className="h-3 w-3" />
+                      </button>
+                  </Badge>
+              ))}
+              <Button variant="ghost" size="sm" onClick={() => setSelectedTags([])}>Clear all</Button>
+          </div>
+        )}
       <div className="grid gap-4">
-        {forumPosts.map(post => (
+        {filteredPosts.map(post => (
           <Card key={post.id}>
             <CardHeader className="flex flex-row items-start gap-4">
                <UserLink authorId={post.authorId}>

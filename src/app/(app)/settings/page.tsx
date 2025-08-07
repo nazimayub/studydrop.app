@@ -8,9 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
+
+  const handleSaveChanges = () => {
+    toast({
+        title: "Preferences Saved!",
+        description: "Your settings have been updated.",
+    });
+  }
 
   return (
     <div className="grid gap-6">
@@ -46,8 +55,8 @@ export default function SettingsPage() {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="en">English</SelectItem>
-                            <SelectItem value="es">Spanish</SelectItem>
-                            <SelectItem value="fr">French</SelectItem>
+                            <SelectItem value="es" disabled>Spanish</SelectItem>
+                            <SelectItem value="fr" disabled>French</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -67,7 +76,7 @@ export default function SettingsPage() {
                             Increase visibility and readability.
                         </p>
                     </div>
-                    <Switch />
+                    <Switch disabled/>
                 </div>
                 <div className="flex flex-row items-center justify-between rounded-lg border p-4">
                     <div className="space-y-0.5">
@@ -76,14 +85,14 @@ export default function SettingsPage() {
                             Reduce animations and motion effects.
                         </p>
                     </div>
-                    <Switch />
+                    <Switch disabled/>
                 </div>
             </CardContent>
         </Card>
       </div>
 
        <div className="flex justify-start">
-            <Button>Save Preferences</Button>
+            <Button onClick={handleSaveChanges}>Save Preferences</Button>
        </div>
     </div>
   )

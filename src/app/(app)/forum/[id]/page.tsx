@@ -39,6 +39,7 @@ interface Answer {
 }
 
 export default function ForumPostPage({ params }: { params: { id: string } }) {
+    const { id } = params;
     const [post, setPost] = useState<Post | null>(null);
     const [answers, setAnswers] = useState<Answer[]>([]);
     const [newAnswer, setNewAnswer] = useState("");
@@ -46,14 +47,14 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     const { toast } = useToast();
 
     const fetchPostAndAnswers = async () => {
-        const postDoc = doc(db, "questions", params.id);
+        const postDoc = doc(db, "questions", id);
         const postSnapshot = await getDoc(postDoc);
         if (postSnapshot.exists()) {
             const postData = postSnapshot.data();
             setPost({ id: postSnapshot.id, ...postData } as Post);
         }
 
-        const answersCollection = collection(db, "questions", params.id, "answers");
+        const answersCollection = collection(db, "questions", id, "answers");
         const answersSnapshot = await getDocs(answersCollection);
         const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer)).sort((a, b) => {
             if (a.isAccepted && !b.isAccepted) return -1;
@@ -65,14 +66,14 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
 
     useEffect(() => {
         const incrementViewCount = async () => {
-             const postRef = doc(db, "questions", params.id);
+             const postRef = doc(db, "questions", id);
              await updateDoc(postRef, {
                 views: increment(1)
             });
         }
         incrementViewCount();
         fetchPostAndAnswers();
-    }, [params.id]);
+    }, [id]);
 
     const handlePostAnswer = async () => {
         if (!newAnswer.trim() || !user) return;
@@ -90,7 +91,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         }
 
         try {
-            await addDoc(collection(db, "questions", params.id, "answers"), {
+            await addDoc(collection(db, "questions", id, "answers"), {
                 author: authorName,
                 avatar: authorAvatar,
                 fallback: authorFallback,
@@ -101,7 +102,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 isAccepted: false,
             });
 
-            const questionRef = doc(db, "questions", params.id);
+            const questionRef = doc(db, "questions", id);
             await updateDoc(questionRef, {
                 replies: increment(1)
             });
@@ -138,7 +139,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         }
 
         try {
-            const questionRef = doc(db, "questions", params.id);
+            const questionRef = doc(db, "questions", id);
             await updateDoc(questionRef, {
                 upvotes: increment(1)
             });
@@ -176,7 +177,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         }
 
         try {
-            const answerRef = doc(db, "questions", params.id, "answers", answer.id);
+            const answerRef = doc(db, "questions", id, "answers", answer.id);
             await updateDoc(answerRef, {
                 upvotes: increment(1)
             });
@@ -200,7 +201,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         const batch = writeBatch(db);
 
         answers.forEach(answer => {
-            const answerRef = doc(db, "questions", params.id, "answers", answer.id);
+            const answerRef = doc(db, "questions", id, "answers", answer.id);
             if (answer.id === answerToAccept.id) {
                 batch.update(answerRef, { isAccepted: true });
             } else if (answer.isAccepted) {
@@ -331,3 +332,5 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         </div>
     )
 }
+
+    

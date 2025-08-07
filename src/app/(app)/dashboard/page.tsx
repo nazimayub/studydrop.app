@@ -1,10 +1,13 @@
+
+"use client"
+
+import { useEffect, useState } from "react";
 import Link from "next/link"
 import {
   Activity,
   ArrowUpRight,
   Award,
   BookOpen,
-  DollarSign,
   Menu,
   MessageSquare,
   Package2,
@@ -34,8 +37,59 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
+import { db } from "@/lib/firebase/firebase";
+
+interface RecentActivity {
+    id: string;
+    type: 'Note' | 'Question';
+    title: string;
+    author: string;
+    date: any;
+}
 
 export default function Dashboard() {
+  const [stats, setStats] = useState({ notes: 0, questions: 0, answers: 0, points: 1250 });
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      // Fetch Notes
+      const notesCollection = collection(db, "notes");
+      const notesSnapshot = await getDocs(notesCollection);
+      const notesCount = notesSnapshot.size;
+      const notesQuery = query(notesCollection, orderBy("date", "desc"), limit(3));
+      const recentNotes = (await getDocs(notesQuery)).docs.map(doc => ({
+        id: doc.id,
+        type: 'Note' as const,
+        title: doc.data().title,
+        author: doc.data().authorName,
+        date: doc.data().date
+      }));
+
+      // Fetch Questions
+      const questionsCollection = collection(db, "questions");
+      const questionsSnapshot = await getDocs(questionsCollection);
+      const questionsCount = questionsSnapshot.size;
+       const questionsQuery = query(questionsCollection, orderBy("date", "desc"), limit(3));
+      const recentQuestions = (await getDocs(questionsQuery)).docs.map(doc => ({
+        id: doc.id,
+        type: 'Question' as const,
+        title: doc.data().title,
+        author: doc.data().author,
+        date: doc.data().date?.toDate() || new Date(doc.data().date)
+      }));
+
+      // Combine and sort activities
+      const combinedActivity = [...recentNotes, ...recentQuestions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
+      
+      setRecentActivity(combinedActivity);
+      setStats(prev => ({ ...prev, notes: notesCount, questions: questionsCount }));
+    };
+
+    fetchData();
+  }, []);
+
   return (
     <div className="flex min-h-screen w-full flex-col">
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -48,9 +102,9 @@ export default function Dashboard() {
               <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">42</div>
+              <div className="text-2xl font-bold">{stats.notes}</div>
               <p className="text-xs text-muted-foreground">
-                +5 since last week
+                Total notes created
               </p>
             </CardContent>
           </Card>
@@ -62,9 +116,9 @@ export default function Dashboard() {
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">+12</div>
+              <div className="text-2xl font-bold">{stats.questions}</div>
               <p className="text-xs text-muted-foreground">
-                in the last hour
+                Total questions asked
               </p>
             </CardContent>
           </Card>
@@ -74,9 +128,9 @@ export default function Dashboard() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">+8</div>
+              <div className="text-2xl font-bold">{stats.answers}</div>
               <p className="text-xs text-muted-foreground">
-                +2 since yesterday
+                Total answers provided
               </p>
             </CardContent>
           </Card>
@@ -86,7 +140,7 @@ export default function Dashboard() {
               <Award className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">1,250</div>
+              <div className="text-2xl font-bold">{stats.points.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 +150 this week
               </p>
@@ -114,67 +168,30 @@ export default function Dashboard() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>User</TableHead>
+                    <TableHead>Activity</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Date</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <TableRow>
-                    <TableCell>
-                      <div className="font-medium">Olivia Martin</div>
-                      <div className="hidden text-sm text-muted-foreground md:inline">
-                        Biology 101 Notes
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className="text-xs" variant="outline">
-                        Note
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">2023-06-23</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>
-                      <div className="font-medium">Jackson Lee</div>
-                      <div className="hidden text-sm text-muted-foreground md:inline">
-                         How does photosynthesis work?
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                     <Badge className="text-xs" variant="outline">
-                        Question
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">2023-06-24</TableCell>
-                  </TableRow>
-                  <TableRow>
-                     <TableCell>
-                      <div className="font-medium">Isabella Nguyen</div>
-                       <div className="hidden text-sm text-muted-foreground md:inline">
-                        Summary of "The Great Gatsby"
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className="text-xs" variant="outline">
-                        Note
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">2023-06-25</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell>
-                       <div className="font-medium">William Kim</div>
-                       <div className="hidden text-sm text-muted-foreground md:inline">
-                        Calculus II Practice Problems
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className="text-xs" variant="outline">
-                        Note
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">2023-06-26</TableCell>
-                  </TableRow>
+                  {recentActivity.map(activity => (
+                    <TableRow key={activity.id}>
+                        <TableCell>
+                            <div className="font-medium">{activity.author}</div>
+                        </TableCell>
+                        <TableCell>
+                            <div className="hidden text-sm text-muted-foreground md:inline">
+                                {activity.title}
+                            </div>
+                        </TableCell>
+                        <TableCell>
+                        <Badge className="text-xs" variant="outline">
+                            {activity.type}
+                        </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{new Date(activity.date).toLocaleDateString()}</TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </CardContent>

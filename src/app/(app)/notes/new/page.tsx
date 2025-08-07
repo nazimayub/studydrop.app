@@ -2,7 +2,7 @@
 "use client"
 
 import { useState } from "react";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, doc, updateDoc, increment } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -23,7 +23,6 @@ export default function NewNotePage() {
 
     const handleCreateNote = async () => {
         if (!user) {
-            // Handle case where user is not logged in
             router.push("/login");
             return;
         }
@@ -39,6 +38,12 @@ export default function NewNotePage() {
                 authorId: user.uid,
                 authorName: user.displayName || "Anonymous",
             });
+            
+            const userDocRef = doc(db, "users", user.uid);
+            await updateDoc(userDocRef, {
+                points: increment(10)
+            });
+
             router.push("/notes");
         } catch (error) {
             console.error("Error adding document: ", error);

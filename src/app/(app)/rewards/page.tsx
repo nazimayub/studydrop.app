@@ -1,3 +1,9 @@
+
+"use client"
+import { useEffect, useState } from "react";
+import { collection, getDocs, query, orderBy, limit, doc, getDoc, collectionGroup } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase/firebase";
+import { useAuthState } from "react-firebase-hooks/auth";
 import { Award, Star, Trophy } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -5,23 +11,85 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-const badges = [
-  { name: "First Note", icon: Star, description: "Create your first note.", achieved: true },
-  { name: "Question Starter", icon: Star, description: "Ask your first question.", achieved: true },
-  { name: "Helping Hand", icon: Star, description: "Provide your first answer.", achieved: false },
-  { name: "Note Taker Pro", icon: Trophy, description: "Create 10 notes.", achieved: true, progress: 100 },
-  { name: "Curious Mind", icon: Trophy, description: "Ask 10 questions.", achieved: false, progress: 30 },
-  { name: "Community Pillar", icon: Trophy, description: "Provide 10 answers.", achieved: false, progress: 10 },
-];
+interface UserData {
+    id: string;
+    firstName: string;
+    lastName: string;
+    points: number;
+}
 
-const leaderboard = [
-  { rank: 1, user: "Charlie Brown", points: 5280, avatar: "https://placehold.co/40x40.png", fallback: "CB" },
-  { rank: 2, user: "Alice Johnson", points: 4150, avatar: "https://placehold.co/40x40.png", fallback: "AJ" },
-  { rank: 3, user: "You", points: 1250, avatar: "https://placehold.co/40x40.png", fallback: "SB" },
-  { rank: 4, user: "Bob Williams", points: 980, avatar: "https://placehold.co/40x40.png", fallback: "BW" },
-];
+interface Badge {
+    name: string;
+    icon: React.ElementType;
+    description: string;
+    achieved: boolean;
+    progress?: number;
+    goal: number;
+}
 
 export default function RewardsPage() {
+    const [user] = useAuthState(auth);
+    const [currentUserData, setCurrentUserData] = useState<UserData | null>(null);
+    const [leaderboard, setLeaderboard] = useState<UserData[]>([]);
+    const [badges, setBadges] = useState<Badge[]>([]);
+    
+    useEffect(() => {
+        const fetchUserData = async () => {
+            if (!user) return;
+
+            const userDocRef = doc(db, "users", user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+                setCurrentUserData({ id: user.uid, ...userDocSnap.data() } as UserData);
+            }
+
+            const notesSnapshot = await getDocs(collection(db, "notes"));
+            const userNotesCount = notesSnapshot.docs.filter(d => d.data().authorId === user.uid).length;
+
+            const questionsSnapshot = await getDocs(collection(db, "questions"));
+            const userQuestionsCount = questionsSnapshot.docs.filter(d => d.data().authorId === user.uid).length;
+
+            const answersSnapshot = await getDocs(collectionGroup(db, 'answers'));
+            const userAnswerCount = answersSnapshot.docs.filter(d => d.data().authorId === user.uid).length;
+
+            const initialBadges: Omit<Badge, 'achieved' | 'progress'>[] = [
+                { name: "First Note", icon: Star, description: "Create your first note.", goal: 1 },
+                { name: "Question Starter", icon: Star, description: "Ask your first question.", goal: 1 },
+                { name: "Helping Hand", icon: Star, description: "Provide your first answer.", goal: 1 },
+                { name: "Note Taker Pro", icon: Trophy, description: "Create 10 notes.", goal: 10 },
+                { name: "Curious Mind", icon: Trophy, description: "Ask 10 questions.", goal: 10 },
+                { name: "Community Pillar", icon: Trophy, description: "Provide 10 answers.", goal: 10 },
+            ];
+
+            const calculatedBadges = initialBadges.map(b => {
+                let currentProgress = 0;
+                if (b.name.includes("Note")) currentProgress = userNotesCount;
+                if (b.name.includes("Question")) currentProgress = userQuestionsCount;
+                if (b.name.includes("Answer")) currentProgress = userAnswerCount;
+
+                return {
+                    ...b,
+                    progress: Math.min((currentProgress / b.goal) * 100, 100),
+                    achieved: currentProgress >= b.goal,
+                }
+            })
+            setBadges(calculatedBadges);
+
+        };
+
+        const fetchLeaderboard = async () => {
+            const usersCollection = collection(db, "users");
+            const q = query(usersCollection, orderBy("points", "desc"), limit(10));
+            const querySnapshot = await getDocs(q);
+            const leaderboardData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserData));
+            setLeaderboard(leaderboardData);
+        };
+        
+        fetchUserData();
+        fetchLeaderboard();
+
+    }, [user]);
+
   return (
     <div className="grid gap-6">
        <div>
@@ -33,7 +101,7 @@ export default function RewardsPage() {
                 <CardTitle>Your Progress</CardTitle>
                 <div className="flex items-center gap-2 font-bold text-2xl text-accent">
                     <Award className="h-6 w-6" />
-                    <span>1,250 Points</span>
+                    <span>{currentUserData?.points.toLocaleString() || 0} Points</span>
                 </div>
             </CardHeader>
         </Card>
@@ -80,16 +148,16 @@ export default function RewardsPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {leaderboard.map(entry => (
-                                    <TableRow key={entry.rank} className={entry.user === 'You' ? 'bg-accent/10' : ''}>
-                                        <TableCell className="font-medium text-lg">{entry.rank}</TableCell>
+                                {leaderboard.map((entry, index) => (
+                                    <TableRow key={entry.id} className={entry.id === user?.uid ? 'bg-accent/10' : ''}>
+                                        <TableCell className="font-medium text-lg">{index + 1}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 <Avatar>
-                                                    <AvatarImage src={entry.avatar} />
-                                                    <AvatarFallback>{entry.fallback}</AvatarFallback>
+                                                    <AvatarImage src={"https://placehold.co/40x40.png"} />
+                                                    <AvatarFallback>{`${entry.firstName?.charAt(0) || ''}${entry.lastName?.charAt(0) || ''}`}</AvatarFallback>
                                                 </Avatar>
-                                                <span>{entry.user}</span>
+                                                <span>{entry.id === user?.uid ? 'You' : `${entry.firstName} ${entry.lastName}`}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right font-semibold">{entry.points.toLocaleString()}</TableCell>

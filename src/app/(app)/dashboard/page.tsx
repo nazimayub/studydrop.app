@@ -37,8 +37,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { collection, getDocs, limit, orderBy, query } from "firebase/firestore";
-import { db } from "@/lib/firebase/firebase";
+import { collection, getDocs, limit, orderBy, query, getDoc, doc } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase/firebase";
+import { useAuthState } from "react-firebase-hooks/auth";
 
 interface RecentActivity {
     id: string;
@@ -49,7 +50,8 @@ interface RecentActivity {
 }
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({ notes: 0, questions: 0, answers: 0, points: 1250 });
+  const [user] = useAuthState(auth);
+  const [stats, setStats] = useState({ notes: 0, questions: 0, answers: 0, points: 0 });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
 
   useEffect(() => {
@@ -67,11 +69,17 @@ export default function Dashboard() {
         date: doc.data().date
       }));
 
-      // Fetch Questions
+      // Fetch Questions and Answers
       const questionsCollection = collection(db, "questions");
       const questionsSnapshot = await getDocs(questionsCollection);
       const questionsCount = questionsSnapshot.size;
-       const questionsQuery = query(questionsCollection, orderBy("date", "desc"), limit(3));
+      let answersCount = 0;
+      for (const questionDoc of questionsSnapshot.docs) {
+          const answersSnapshot = await getDocs(collection(db, "questions", questionDoc.id, "answers"));
+          answersCount += answersSnapshot.size;
+      }
+
+      const questionsQuery = query(questionsCollection, orderBy("date", "desc"), limit(3));
       const recentQuestions = (await getDocs(questionsQuery)).docs.map(doc => ({
         id: doc.id,
         type: 'Question' as const,
@@ -84,11 +92,20 @@ export default function Dashboard() {
       const combinedActivity = [...recentNotes, ...recentQuestions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
       
       setRecentActivity(combinedActivity);
-      setStats(prev => ({ ...prev, notes: notesCount, questions: questionsCount }));
+
+      let userPoints = 0;
+      if (user) {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+            userPoints = userDoc.data().points || 0;
+        }
+      }
+
+      setStats({ notes: notesCount, questions: questionsCount, answers: answersCount, points: userPoints });
     };
 
     fetchData();
-  }, []);
+  }, [user]);
 
   return (
     <div className="flex min-h-screen w-full flex-col">

@@ -39,10 +39,12 @@ export default function SignupPage() {
                 firstName,
                 lastName,
                 email,
+                points: 0,
+                bio: "",
             });
 
             router.push("/dashboard");
-        } catch (error)
+        } catch (error) {
             console.error("Error signing up: ", error);
         }
     }
@@ -59,7 +61,7 @@ export default function SignupPage() {
           <CardTitle className="text-2xl font-headline">Sign Up</CardTitle>
           <CardDescription>
             Enter your information to create an account
-          </CardDescription>
+          </Description>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">

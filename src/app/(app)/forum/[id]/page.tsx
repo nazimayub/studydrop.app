@@ -1,7 +1,7 @@
 
 "use client"
 import { useEffect, useState } from "react";
-import { doc, getDoc, collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, addDoc, serverTimestamp, updateDoc, increment } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 
@@ -37,21 +37,21 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     const [newAnswer, setNewAnswer] = useState("");
     const [user] = useAuthState(auth);
 
+    const fetchPostAndAnswers = async () => {
+        const postDoc = doc(db, "questions", params.id);
+        const postSnapshot = await getDoc(postDoc);
+        if (postSnapshot.exists()) {
+            const postData = postSnapshot.data();
+            setPost({ id: postSnapshot.id, ...postData } as Post);
+        }
+
+        const answersCollection = collection(db, "questions", params.id, "answers");
+        const answersSnapshot = await getDocs(answersCollection);
+        const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer)).sort((a, b) => b.date - a.date);
+        setAnswers(answersList);
+    };
+
     useEffect(() => {
-        const fetchPostAndAnswers = async () => {
-            const postDoc = doc(db, "questions", params.id);
-            const postSnapshot = await getDoc(postDoc);
-            if (postSnapshot.exists()) {
-                const postData = postSnapshot.data();
-                setPost({ id: postSnapshot.id, ...postData } as Post);
-            }
-
-            const answersCollection = collection(db, "questions", params.id, "answers");
-            const answersSnapshot = await getDocs(answersCollection);
-            const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer)).sort((a, b) => b.date - a.date);
-            setAnswers(answersList);
-        };
-
         fetchPostAndAnswers();
     }, [params.id]);
 
@@ -78,12 +78,14 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 upvotes: 0,
                 authorId: user.uid,
             });
+
+            const userDocRef = doc(db, "users", user.uid);
+            await updateDoc(userDocRef, {
+                points: increment(15)
+            });
+
             setNewAnswer("");
-            // Refetch answers
-            const answersCollection = collection(db, "questions", params.id, "answers");
-            const answersSnapshot = await getDocs(answersCollection);
-            const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer)).sort((a, b) => b.date - a.date);
-            setAnswers(answersList);
+            fetchPostAndAnswers();
         } catch (error) {
             console.error("Error adding document: ", error);
         }

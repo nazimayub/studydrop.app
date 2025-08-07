@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 
@@ -56,6 +56,14 @@ export default function NewQuestionPage() {
                 replies: 0,
                 upvotes: 0,
             });
+
+            if (!isAnonymous) {
+                const userDocRef = doc(db, "users", user.uid);
+                await updateDoc(userDocRef, {
+                    points: increment(5)
+                });
+            }
+
             router.push("/forum");
         } catch (error) {
             console.error("Error adding document: ", error);

@@ -11,7 +11,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 
 interface Note {
   title: string;
@@ -27,7 +26,6 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
     const [subject, setSubject] = useState("");
     const [noteClass, setNoteClass] = useState("");
     const [content, setContent] = useState("");
-    const [isPublic, setIsPublic] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -41,7 +39,6 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
                 setSubject(noteData.subject);
                 setNoteClass(noteData.class);
                 setContent(noteData.content);
-                setIsPublic(noteData.isPublic || false);
             } else {
                 router.push("/notes");
             }
@@ -58,7 +55,7 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
                 subject,
                 class: noteClass,
                 content,
-                isPublic: isPublic
+                isPublic: true
             });
             router.push(`/notes/${params.id}`);
         } catch (error) {
@@ -93,10 +90,6 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
                      <div className="grid gap-2">
                         <Label htmlFor="content">Content</Label>
                         <Textarea id="content" placeholder="Write your note here..." rows={10} value={content} onChange={(e) => setContent(e.target.value)} />
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Switch id="public-note" checked={isPublic} onCheckedChange={setIsPublic} />
-                        <Label htmlFor="public-note">Make this note public</Label>
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">

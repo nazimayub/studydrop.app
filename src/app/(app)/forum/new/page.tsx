@@ -20,6 +20,7 @@ export default function NewQuestionPage() {
     const [tags, setTags] = useState("");
     const [description, setDescription] = useState("");
     const [isAnonymous, setIsAnonymous] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
     const [user] = useAuthState(auth);
 
@@ -28,6 +29,8 @@ export default function NewQuestionPage() {
             router.push("/login");
             return;
         }
+
+        setIsLoading(true);
 
         let authorName = "Anonymous";
         let authorFallback = "A";
@@ -69,6 +72,8 @@ export default function NewQuestionPage() {
             router.push("/forum");
         } catch (error) {
             console.error("Error adding document: ", error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -98,7 +103,9 @@ export default function NewQuestionPage() {
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end">
-                    <Button onClick={handlePostQuestion}>Post Question</Button>
+                    <Button onClick={handlePostQuestion} disabled={isLoading}>
+                       {isLoading ? "Posting..." : "Post Question"}
+                    </Button>
                 </CardFooter>
             </Card>
         </div>

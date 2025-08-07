@@ -6,15 +6,12 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   File,
-  ListFilter,
   MoreHorizontal,
   PlusCircle,
-  Users,
 } from "lucide-react"
 import { collection, getDocs, deleteDoc, doc, query, where } from "firebase/firestore"
 import { useAuthState } from "react-firebase-hooks/auth"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -29,7 +26,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -40,12 +36,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,32 +62,22 @@ interface Note {
 
 export default function NotesPage() {
     const [user] = useAuthState(auth);
-    const [myNotes, setMyNotes] = useState<Note[]>([]);
-    const [communityNotes, setCommunityNotes] = useState<Note[]>([]);
+    const [allNotes, setAllNotes] = useState<Note[]>([]);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
     const router = useRouter();
 
     const fetchNotes = async () => {
-        if (!user) return;
-        // Fetch user's notes
-        const myNotesQuery = query(collection(db, "notes"), where("authorId", "==", user.uid));
-        const myNotesSnapshot = await getDocs(myNotesQuery);
-        const myNotesList = myNotesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
-        setMyNotes(myNotesList);
-
-        // Fetch community notes
-        const communityNotesQuery = query(collection(db, "notes"), where("isPublic", "==", true));
-        const communityNotesSnapshot = await getDocs(communityNotesQuery);
-        const communityNotesList = communityNotesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
-        setCommunityNotes(communityNotesList);
+        // Fetch all public notes
+        const notesQuery = query(collection(db, "notes"), where("isPublic", "==", true));
+        const notesSnapshot = await getDocs(notesQuery);
+        const notesList = notesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
+        setAllNotes(notesList);
     };
 
     useEffect(() => {
-        if(user) {
-            fetchNotes();
-        }
-    }, [user]);
+        fetchNotes();
+    }, []);
 
 
     const handleDeleteClick = (noteId: string) => {
@@ -138,12 +118,11 @@ export default function NotesPage() {
 
   return (
     <>
-    <Tabs defaultValue="my-notes">
-      <div className="flex items-center">
-        <TabsList>
-          <TabsTrigger value="my-notes">My Notes</TabsTrigger>
-          <TabsTrigger value="community-notes">Community Notes</TabsTrigger>
-        </TabsList>
+    <div className="flex items-center">
+        <div className="flex-1">
+            <h1 className="text-3xl font-bold font-headline">All Notes</h1>
+            <p className="text-muted-foreground">Explore notes shared by the community.</p>
+        </div>
         <div className="ml-auto flex items-center gap-2">
           <Link href="/notes/new">
             <Button size="sm" className="h-8 gap-1">
@@ -155,16 +134,15 @@ export default function NotesPage() {
           </Link>
         </div>
       </div>
-      <TabsContent value="my-notes">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-                <CardTitle>My Notes</CardTitle>
+                <CardTitle>Community Notes</CardTitle>
                 <CardDescription>
                 Manage your personal notes and study materials.
                 </CardDescription>
             </div>
-             <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => handleExport(myNotes)}>
+             <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => handleExport(allNotes)}>
                 <File className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                 Export
@@ -176,8 +154,8 @@ export default function NotesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
+                  <TableHead>Author</TableHead>
                   <TableHead>Subject</TableHead>
-                  <TableHead>Visibility</TableHead>
                   <TableHead className="hidden md:table-cell">
                     Created at
                   </TableHead>
@@ -187,73 +165,7 @@ export default function NotesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {myNotes.map((note) => (
-                    <TableRow key={note.id}>
-                    <TableCell className="font-medium">
-                        <Link href={`/notes/${note.id}`} className="hover:underline">{note.title}</Link>
-                    </TableCell>
-                    <TableCell>{note.subject}</TableCell>
-                     <TableCell>
-                        <Badge variant={note.isPublic ? 'default' : 'secondary'}>
-                            {note.isPublic ? 'Public' : 'Private'}
-                        </Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                        {new Date(note.date).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                        <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                            aria-haspopup="true"
-                            size="icon"
-                            variant="ghost"
-                            >
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={() => router.push(`/notes/${note.id}/edit`)}>Edit</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleDeleteClick(note.id)}>Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                        </DropdownMenu>
-                    </TableCell>
-                    </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-          <CardFooter>
-            <div className="text-xs text-muted-foreground">
-              Showing <strong>{myNotes.length}</strong> of your notes.
-            </div>
-          </CardFooter>
-        </Card>
-      </TabsContent>
-      <TabsContent value="community-notes">
-        <Card>
-          <CardHeader>
-            <CardTitle>Community Notes</CardTitle>
-            <CardDescription>
-              Explore notes shared by other students.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Author</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead className="hidden md:table-cell">
-                    Created at
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {communityNotes.map((note) => (
+                {allNotes.map((note) => (
                     <TableRow key={note.id}>
                     <TableCell className="font-medium">
                         <Link href={`/notes/${note.id}`} className="hover:underline">{note.title}</Link>
@@ -265,6 +177,27 @@ export default function NotesPage() {
                     <TableCell className="hidden md:table-cell">
                         {new Date(note.date).toLocaleDateString()}
                     </TableCell>
+                    <TableCell>
+                        {user?.uid === note.authorId && (
+                            <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                aria-haspopup="true"
+                                size="icon"
+                                variant="ghost"
+                                >
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Toggle menu</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem onSelect={() => router.push(`/notes/${note.id}/edit`)}>Edit</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleDeleteClick(note.id)}>Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </TableCell>
                     </TableRow>
                 ))}
               </TableBody>
@@ -272,12 +205,10 @@ export default function NotesPage() {
           </CardContent>
           <CardFooter>
             <div className="text-xs text-muted-foreground">
-              Showing <strong>{communityNotes.length}</strong> public notes.
+              Showing <strong>{allNotes.length}</strong> of your notes.
             </div>
           </CardFooter>
         </Card>
-      </TabsContent>
-    </Tabs>
     <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
             <AlertDialogHeader>

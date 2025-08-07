@@ -12,14 +12,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 
 export default function NewNotePage() {
     const [title, setTitle] = useState("");
     const [subject, setSubject] = useState("");
     const [noteClass, setNoteClass] = useState("");
     const [content, setContent] = useState("");
-    const [isPublic, setIsPublic] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
     const [user] = useAuthState(auth);
 
@@ -28,6 +27,8 @@ export default function NewNotePage() {
             router.push("/login");
             return;
         }
+
+        setIsLoading(true);
 
         try {
             await addDoc(collection(db, "notes"), {
@@ -39,7 +40,7 @@ export default function NewNotePage() {
                 status: "Published",
                 authorId: user.uid,
                 authorName: user.displayName || "Anonymous",
-                isPublic: isPublic,
+                isPublic: true,
             });
             
             const userDocRef = doc(db, "users", user.uid);
@@ -50,6 +51,8 @@ export default function NewNotePage() {
             router.push("/notes");
         } catch (error) {
             console.error("Error adding document: ", error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -58,7 +61,7 @@ export default function NewNotePage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="font-headline text-3xl">Add New Note</CardTitle>
-                    <CardDescription>Fill out the form below to create a new note.</CardDescription>
+                    <CardDescription>Fill out the form below to create a new note. All notes are public.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6">
                     <div className="grid gap-2">
@@ -77,13 +80,11 @@ export default function NewNotePage() {
                         <Label htmlFor="content">Content</Label>
                         <Textarea id="content" placeholder="Write your note here..." rows={10} value={content} onChange={(e) => setContent(e.target.value)} />
                     </div>
-                     <div className="flex items-center space-x-2">
-                        <Switch id="public-note" checked={isPublic} onCheckedChange={setIsPublic} />
-                        <Label htmlFor="public-note">Make this note public</Label>
-                    </div>
                 </CardContent>
                 <CardFooter className="flex justify-end">
-                    <Button onClick={handleCreateNote}>Create Note</Button>
+                    <Button onClick={handleCreateNote} disabled={isLoading}>
+                        {isLoading ? "Creating..." : "Create Note"}
+                    </Button>
                 </CardFooter>
             </Card>
         </div>

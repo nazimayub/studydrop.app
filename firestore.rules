@@ -3,40 +3,62 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+  
+    // Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
 
-    // Users can read public profile data of other users.
-    // Users can only write to their own user document.
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Users Collection
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow update: if request.auth.uid == userId
-                    // Ensure user cannot update their own points
-                    && !("points" in request.resource.data)
-                    && request.resource.data.keys().hasAll(['firstName', 'lastName', 'email', 'bio', 'photoURL']);
-      allow create: if request.auth.uid == userId;
+      // Anyone can read a user's public profile data
+      allow get: if true;
+      // Only the user can create their own document
+      allow create: if isOwner(userId);
+      // Only the user can update their own data
+      // They cannot update their points or createdAt fields
+      allow update: if isOwner(userId) 
+                    && request.resource.data.points == resource.data.points
+                    && request.resource.data.createdAt == resource.data.createdAt;
+      // Users cannot be deleted for now to maintain data integrity
+      allow delete: if false;
     }
-
-    // Notes: Users can manage their own notes.
-    // Public notes can be read by any authenticated user.
+    
+    // Notes Collection
     match /notes/{noteId} {
-      allow read: if resource.data.isPublic == true || (request.auth != null && request.auth.uid == resource.data.authorId);
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.authorId;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+      // A user can create a note if they are signed in
+      allow create: if isSignedIn();
+      
+      // Users can read a note if they are the owner OR if the note is public
+      allow get: if isSignedIn() && (resource.data.authorId == request.auth.uid || resource.data.isPublic == true);
+      
+      // Users can update or delete a note only if they are the owner
+      allow update, delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
     }
-
-    // Questions: Authenticated users can create questions.
-    // Users can only update/delete their own questions.
+    
+    // Questions and Answers
     match /questions/{questionId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
-
-      // Answers: Authenticated users can add answers.
-      // Users can only update/delete their own answers.
-      match /answers/{answerId} {
-        allow read: if true;
-        allow create: if request.auth != null;
-        allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
-      }
+        // Any signed-in user can create a question
+        allow create: if isSignedIn();
+        // Any signed-in user can read any question
+        allow get: if isSignedIn();
+        // A user can update their own question, but not things like upvotes
+        allow update: if isSignedIn() && resource.data.authorId == request.auth.uid;
+        // A user can delete their own question
+        allow delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+        
+        match /answers/{answerId} {
+            // Any signed-in user can create an answer
+            allow create: if isSignedIn();
+            // Any signed-in user can read answers
+            allow list, get: if isSignedIn();
+            // A user can update or delete their own answer
+            allow update, delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+        }
     }
   }
 }

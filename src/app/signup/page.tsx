@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { createUserWithEmailAndPassword, updateProfile, signInWithPopup } from "firebase/auth"
-import { doc, setDoc, getDoc } from "firebase/firestore"
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"
 import { auth, db, googleProvider } from "@/lib/firebase/firebase"
 import { useToast } from "@/hooks/use-toast"
 
@@ -52,7 +52,8 @@ export default function SignupPage() {
                 email,
                 points: 0,
                 bio: "",
-                photoURL: ""
+                photoURL: "",
+                createdAt: serverTimestamp()
             });
 
             router.push("/dashboard");
@@ -93,7 +94,8 @@ export default function SignupPage() {
                     email: user.email,
                     points: 0,
                     bio: "",
-                    photoURL: user.photoURL || ""
+                    photoURL: user.photoURL || "",
+                    createdAt: serverTimestamp()
                 });
             }
 

@@ -45,11 +45,6 @@ export default function NewNotePage() {
                 isPublic: true,
             });
             
-            const userDocRef = doc(db, "users", user.uid);
-            await updateDoc(userDocRef, {
-                points: increment(100)
-            });
-
             toast({
                 title: "Note Created!",
                 description: "Your new note has been saved.",

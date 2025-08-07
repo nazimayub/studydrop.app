@@ -1,14 +1,42 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read and write to their own data
-    match /users/{userId}/{documents=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    // Allow read access to public data for any authenticated user
-    match /public/{document=**} {
+
+    // Users can read public profile data of other users.
+    // Users can only write to their own user document.
+    match /users/{userId} {
       allow read: if request.auth != null;
+      allow update: if request.auth.uid == userId
+                    // Ensure user cannot update their own points
+                    && !("points" in request.resource.data)
+                    && request.resource.data.keys().hasAll(['firstName', 'lastName', 'email', 'bio', 'photoURL']);
+      allow create: if request.auth.uid == userId;
+    }
+
+    // Notes: Users can manage their own notes.
+    // Public notes can be read by any authenticated user.
+    match /notes/{noteId} {
+      allow read: if resource.data.isPublic == true || (request.auth != null && request.auth.uid == resource.data.authorId);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.authorId;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+    }
+
+    // Questions: Authenticated users can create questions.
+    // Users can only update/delete their own questions.
+    match /questions/{questionId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+
+      // Answers: Authenticated users can add answers.
+      // Users can only update/delete their own answers.
+      match /answers/{answerId} {
+        allow read: if true;
+        allow create: if request.auth != null;
+        allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
+      }
     }
   }
 }

@@ -207,3 +207,5 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
     </div>
   )
 }
+
+    

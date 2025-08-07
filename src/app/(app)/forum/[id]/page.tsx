@@ -1,7 +1,7 @@
 
 "use client"
 import { useEffect, useState } from "react";
-import { doc, getDoc, collection, getDocs, addDoc, serverTimestamp, updateDoc, increment } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, addDoc, serverTimestamp, updateDoc, increment, writeBatch } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import Link from 'next/link';
@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
-import { ThumbsUp } from "lucide-react";
+import { CheckCircle, ThumbsUp } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Post {
     id: string;
@@ -34,6 +35,7 @@ interface Answer {
     date: any;
     content: string;
     upvotes: number;
+    isAccepted?: boolean;
 }
 
 export default function ForumPostPage({ params }: { params: { id: string } }) {
@@ -53,7 +55,11 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
 
         const answersCollection = collection(db, "questions", params.id, "answers");
         const answersSnapshot = await getDocs(answersCollection);
-        const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer)).sort((a, b) => b.date - a.date);
+        const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer)).sort((a, b) => {
+            if (a.isAccepted && !b.isAccepted) return -1;
+            if (!a.isAccepted && b.isAccepted) return 1;
+            return b.date - a.date;
+        });
         setAnswers(answersList);
     };
 
@@ -92,6 +98,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 date: serverTimestamp(),
                 upvotes: 0,
                 authorId: user.uid,
+                isAccepted: false,
             });
 
             const questionRef = doc(db, "questions", params.id);
@@ -186,6 +193,43 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
             console.error("Error upvoting answer: ", error);
         }
     };
+
+     const handleAcceptAnswer = async (answerToAccept: Answer) => {
+        if (!user || user.uid !== post?.authorId) return;
+
+        const batch = writeBatch(db);
+
+        answers.forEach(answer => {
+            const answerRef = doc(db, "questions", params.id, "answers", answer.id);
+            if (answer.id === answerToAccept.id) {
+                batch.update(answerRef, { isAccepted: true });
+            } else if (answer.isAccepted) {
+                batch.update(answerRef, { isAccepted: false });
+            }
+        });
+
+        // Award points to the answer author
+        if (answerToAccept.authorId) {
+            const authorRef = doc(db, "users", answerToAccept.authorId);
+            batch.update(authorRef, { points: increment(25) });
+        }
+        
+        try {
+            await batch.commit();
+            toast({
+                title: "Answer Accepted!",
+                description: "You've marked this answer as the solution.",
+            });
+            fetchPostAndAnswers();
+        } catch (error) {
+            console.error("Error accepting answer: ", error);
+             toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not accept the answer. Please try again.",
+            });
+        }
+    };
     
     if (!post) {
         return <div>Loading...</div>;
@@ -229,7 +273,9 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
 
             <div className="grid gap-4">
                 {answers.map(answer => (
-                    <Card key={answer.id}>
+                    <Card key={answer.id} className={cn(
+                        answer.isAccepted && "border-green-500 bg-green-500/5"
+                    )}>
                         <CardHeader className="flex flex-row items-start gap-4">
                             <Link href={`/users/${answer.authorId}`}>
                                 <Avatar>
@@ -237,17 +283,31 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                                     <AvatarFallback>{answer.fallback}</AvatarFallback>
                                 </Avatar>
                             </Link>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                     <UserLink authorId={answer.authorId}>
-                                        <span className="font-semibold">{answer.author}</span>
-                                    </UserLink>
-                                    <span className="text-sm text-muted-foreground">&middot; {answer.date && new Date(answer.date.seconds * 1000).toLocaleDateString()}</span>
+                            <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <UserLink authorId={answer.authorId}>
+                                            <span className="font-semibold">{answer.author}</span>
+                                        </UserLink>
+                                        <span className="text-sm text-muted-foreground">&middot; {answer.date && new Date(answer.date.seconds * 1000).toLocaleDateString()}</span>
+                                    </div>
+                                    {answer.isAccepted && (
+                                        <div className="flex items-center gap-1 text-sm font-semibold text-green-600">
+                                            <CheckCircle className="h-4 w-4" />
+                                            Accepted Answer
+                                        </div>
+                                    )}
                                 </div>
                                 <p className="mt-2">{answer.content}</p>
                             </div>
                         </CardHeader>
-                         <CardFooter className="flex justify-end">
+                         <CardFooter className="flex justify-end gap-2">
+                             {user?.uid === post.authorId && !answer.isAccepted && (
+                                <Button variant="outline" size="sm" onClick={() => handleAcceptAnswer(answer)}>
+                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                    Accept
+                                </Button>
+                             )}
                             <Button variant="ghost" size="sm" onClick={() => handleUpvoteAnswer(answer)}>
                                 <ThumbsUp className="mr-2 h-4 w-4" />
                                 {answer.upvotes}

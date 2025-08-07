@@ -120,7 +120,7 @@ export default function SignupPage() {
           <CardTitle className="text-2xl font-headline">Sign Up</CardTitle>
           <CardDescription>
             Enter your information to create an account
-          </Description>
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">

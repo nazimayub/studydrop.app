@@ -3,13 +3,14 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   File,
   ListFilter,
   MoreHorizontal,
   PlusCircle,
 } from "lucide-react"
-import { collection, getDocs } from "firebase/firestore"
+import { collection, getDocs, deleteDoc, doc } from "firebase/firestore"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -44,6 +45,16 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { db } from "@/lib/firebase/firebase"
 
 interface Note {
@@ -56,20 +67,37 @@ interface Note {
 
 export default function NotesPage() {
     const [notesData, setNotesData] = useState<Note[]>([]);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
+    const router = useRouter();
+
+    const fetchNotes = async () => {
+        const notesCollection = collection(db, "notes");
+        const notesSnapshot = await getDocs(notesCollection);
+        const notesList = notesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
+        setNotesData(notesList);
+    };
 
     useEffect(() => {
-        const fetchNotes = async () => {
-            const notesCollection = collection(db, "notes");
-            const notesSnapshot = await getDocs(notesCollection);
-            const notesList = notesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
-            setNotesData(notesList);
-        };
-
         fetchNotes();
     }, []);
 
+    const handleDeleteClick = (noteId: string) => {
+        setNoteToDelete(noteId);
+        setShowDeleteDialog(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (noteToDelete) {
+            await deleteDoc(doc(db, "notes", noteToDelete));
+            setNoteToDelete(null);
+            setShowDeleteDialog(false);
+            fetchNotes(); // Refresh notes list
+        }
+    };
 
   return (
+    <>
     <Tabs defaultValue="all">
       <div className="flex items-center">
         <TabsList>
@@ -167,8 +195,8 @@ export default function NotesPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
-                            <DropdownMenuItem>Delete</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => router.push(`/notes/${note.id}/edit`)}>Edit</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleDeleteClick(note.id)}>Delete</DropdownMenuItem>
                         </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>
@@ -185,5 +213,21 @@ export default function NotesPage() {
         </Card>
       </TabsContent>
     </Tabs>
+    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete your
+                note.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }

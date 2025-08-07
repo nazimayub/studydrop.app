@@ -48,7 +48,7 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
                     setUserProfile(userDocSnap.data() as UserProfile);
 
                     // Fetch stats
-                    const notesQuery = query(collection(db, "notes"), where("authorId", "==", params.id));
+                    const notesQuery = query(collection(db, "notes"), where("authorId", "==", params.id), where("isPublic", "==", true));
                     const notesSnapshot = await getDocs(notesQuery);
                     
                     const questionsQuery = query(collection(db, "questions"), where("authorId", "==", params.id));
@@ -64,7 +64,7 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
                     });
 
                     // Fetch recent activity
-                    const userNotesQuery = query(collection(db, "notes"), where("authorId", "==", params.id), orderBy("date", "desc"), limit(5));
+                    const userNotesQuery = query(collection(db, "notes"), where("authorId", "==", params.id), where("isPublic", "==", true), orderBy("date", "desc"), limit(5));
                     const userQuestionsQuery = query(collection(db, "questions"), where("authorId", "==", params.id), orderBy("date", "desc"), limit(5));
                     
                     const userNotesSnapshot = await getDocs(userNotesQuery);

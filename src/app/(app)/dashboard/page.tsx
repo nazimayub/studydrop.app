@@ -14,6 +14,19 @@ import {
   Search,
   Users,
 } from "lucide-react"
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  limit,
+  orderBy,
+  doc,
+  getDoc,
+  collectionGroup
+} from "firebase/firestore";
+import { db, auth } from "@/lib/firebase/firebase";
+import { useAuthState } from "react-firebase-hooks/auth";
 
 import {
   Avatar,
@@ -37,9 +50,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { collection, getDocs, limit, orderBy, query, getDoc, doc } from "firebase/firestore";
-import { db, auth } from "@/lib/firebase/firebase";
-import { useAuthState } from "react-firebase-hooks/auth";
 
 interface RecentActivity {
     id: string;
@@ -55,56 +65,67 @@ export default function Dashboard() {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      // Fetch Notes
-      const notesCollection = collection(db, "notes");
-      const notesSnapshot = await getDocs(notesCollection);
-      const notesCount = notesSnapshot.size;
-      const notesQuery = query(notesCollection, orderBy("date", "desc"), limit(3));
-      const recentNotes = (await getDocs(notesQuery)).docs.map(doc => ({
-        id: doc.id,
-        type: 'Note' as const,
-        title: doc.data().title,
-        author: doc.data().authorName,
-        date: doc.data().date
-      }));
+    const fetchAllActivity = async () => {
+        // Fetch recent notes from all users
+        const notesCollection = collection(db, "notes");
+        const recentNotesQuery = query(notesCollection, orderBy("date", "desc"), limit(3));
+        const recentNotes = (await getDocs(recentNotesQuery)).docs.map(doc => ({
+            id: doc.id,
+            type: 'Note' as const,
+            title: doc.data().title,
+            author: doc.data().authorName,
+            date: doc.data().date
+        }));
 
-      // Fetch Questions and Answers
-      const questionsCollection = collection(db, "questions");
-      const questionsSnapshot = await getDocs(questionsCollection);
-      const questionsCount = questionsSnapshot.size;
-      let answersCount = 0;
-      for (const questionDoc of questionsSnapshot.docs) {
-          const answersSnapshot = await getDocs(collection(db, "questions", questionDoc.id, "answers"));
-          answersCount += answersSnapshot.size;
-      }
+        // Fetch recent questions from all users
+        const questionsCollection = collection(db, "questions");
+        const recentQuestionsQuery = query(questionsCollection, orderBy("date", "desc"), limit(3));
+        const recentQuestions = (await getDocs(recentQuestionsQuery)).docs.map(doc => ({
+            id: doc.id,
+            type: 'Question' as const,
+            title: doc.data().title,
+            author: doc.data().author,
+            date: doc.data().date?.toDate() || new Date(doc.data().date)
+        }));
 
-      const questionsQuery = query(questionsCollection, orderBy("date", "desc"), limit(3));
-      const recentQuestions = (await getDocs(questionsQuery)).docs.map(doc => ({
-        id: doc.id,
-        type: 'Question' as const,
-        title: doc.data().title,
-        author: doc.data().author,
-        date: doc.data().date?.toDate() || new Date(doc.data().date)
-      }));
+        // Combine and sort activities
+        const combinedActivity = [...recentNotes, ...recentQuestions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
+        
+        setRecentActivity(combinedActivity);
+    };
 
-      // Combine and sort activities
-      const combinedActivity = [...recentNotes, ...recentQuestions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
-      
-      setRecentActivity(combinedActivity);
+    const fetchUserStats = async () => {
+        if (!user) return;
+        
+        // Fetch user-specific notes
+        const notesQuery = query(collection(db, "notes"), where("authorId", "==", user.uid));
+        const notesSnapshot = await getDocs(notesQuery);
+        const notesCount = notesSnapshot.size;
 
-      let userPoints = 0;
-      if (user) {
+        // Fetch user-specific questions
+        const questionsQuery = query(collection(db, "questions"), where("authorId", "==", user.uid));
+        const questionsSnapshot = await getDocs(questionsQuery);
+        const questionsCount = questionsSnapshot.size;
+
+        // Fetch user-specific answers
+        const answersQuery = query(collectionGroup(db, 'answers'), where("authorId", "==", user.uid));
+        const answersSnapshot = await getDocs(answersQuery);
+        const answersCount = answersSnapshot.size;
+        
+        // Fetch user points
+        let userPoints = 0;
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
             userPoints = userDoc.data().points || 0;
         }
-      }
 
-      setStats({ notes: notesCount, questions: questionsCount, answers: answersCount, points: userPoints });
+        setStats({ notes: notesCount, questions: questionsCount, answers: answersCount, points: userPoints });
     };
 
-    fetchData();
+    fetchAllActivity();
+    if (user) {
+        fetchUserStats();
+    }
   }, [user]);
 
   return (
@@ -114,40 +135,40 @@ export default function Dashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Notes Created
+                Your Notes
               </CardTitle>
               <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.notes}</div>
               <p className="text-xs text-muted-foreground">
-                Total notes created
+                Total notes you've created
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Questions Asked
+                Your Questions
               </CardTitle>
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.questions}</div>
               <p className="text-xs text-muted-foreground">
-                Total questions asked
+                Total questions you've asked
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Answers Provided</CardTitle>
+              <CardTitle className="text-sm font-medium">Your Answers</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.answers}</div>
               <p className="text-xs text-muted-foreground">
-                Total answers provided
+                Total answers you've provided
               </p>
             </CardContent>
           </Card>
@@ -159,7 +180,7 @@ export default function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold">{stats.points.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
-                +150 this week
+                Keep contributing to earn more!
               </p>
             </CardContent>
           </Card>
@@ -168,9 +189,9 @@ export default function Dashboard() {
           <Card className="xl:col-span-2">
             <CardHeader className="flex flex-row items-center">
               <div className="grid gap-2">
-                <CardTitle>Recent Activity</CardTitle>
+                <CardTitle>Recent Community Activity</CardTitle>
                 <CardDescription>
-                  Recent notes and questions from your network.
+                  Recent notes and questions from all students.
                 </CardDescription>
               </div>
               <Button asChild size="sm" className="ml-auto gap-1">

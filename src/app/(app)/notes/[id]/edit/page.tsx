@@ -12,10 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+// We will remove the old note structure and rely on the new one from new/page.tsx
+// For now, let's keep it simple and just edit the main fields.
+// A more complex edit page would be needed for the new tag structure.
 interface Note {
   title: string;
-  subject: string;
-  class: string;
   content: string;
   isPublic?: boolean;
 }
@@ -23,8 +24,6 @@ interface Note {
 export default function EditNotePage({ params }: { params: { id: string } }) {
     const [note, setNote] = useState<Note | null>(null);
     const [title, setTitle] = useState("");
-    const [subject, setSubject] = useState("");
-    const [noteClass, setNoteClass] = useState("");
     const [content, setContent] = useState("");
     const router = useRouter();
 
@@ -36,8 +35,6 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
                 const noteData = noteSnapshot.data() as Note;
                 setNote(noteData);
                 setTitle(noteData.title);
-                setSubject(noteData.subject);
-                setNoteClass(noteData.class);
                 setContent(noteData.content);
             } else {
                 router.push("/notes");
@@ -52,10 +49,8 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
             const noteDoc = doc(db, "notes", params.id);
             await updateDoc(noteDoc, {
                 title,
-                subject,
-                class: noteClass,
                 content,
-                isPublic: true
+                isPublic: true // All notes are public now
             });
             router.push(`/notes/${params.id}`);
         } catch (error) {
@@ -78,14 +73,6 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
                     <div className="grid gap-2">
                         <Label htmlFor="title">Title</Label>
                         <Input id="title" placeholder="Note title" value={title} onChange={(e) => setTitle(e.target.value)} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="subject">Subject</Label>
-                        <Input id="subject" placeholder="e.g. Physics, History" value={subject} onChange={(e) => setSubject(e.target.value)} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="class">Class</Label>
-                        <Input id="class" placeholder="e.g. PHYS 101, HIST 230" value={noteClass} onChange={(e) => setNoteClass(e.target.value)} />
                     </div>
                      <div className="grid gap-2">
                         <Label htmlFor="content">Content</Label>

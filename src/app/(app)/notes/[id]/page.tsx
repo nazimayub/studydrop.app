@@ -12,7 +12,13 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Bot, Sparkles, List, Copy, ChevronsUpDown, Check } from "lucide-react"
+import { Bot, Sparkles, List, Copy, ChevronsUpDown, Check, Tag } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+
+interface NoteTag {
+    class: string;
+    topic: string;
+}
 
 interface Note {
   title: string;
@@ -21,6 +27,7 @@ interface Note {
   content: string;
   authorId: string;
   authorName: string;
+  tags?: NoteTag[];
 }
 
 export default function NoteDetailPage({ params }: { params: { id: string } }) {
@@ -94,6 +101,15 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
   if (!note) {
     return <div>Loading...</div>;
   }
+  
+  const groupedTags = note.tags?.reduce((acc, tag) => {
+    if (!acc[tag.class]) {
+        acc[tag.class] = [];
+    }
+    acc[tag.class].push(tag.topic);
+    return acc;
+    }, {} as Record<string, string[]>);
+
 
   const currentCard = flashcards[currentFlashcardIndex];
 
@@ -105,7 +121,7 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
             <div>
               <CardTitle className="font-headline text-3xl">{note.title}</CardTitle>
               <CardDescription>
-                Subject: {note.subject} | Created on: {new Date(note.date).toLocaleDateString()} by{" "}
+                Created on: {new Date(note.date).toLocaleDateString()} by{" "}
                 {note.authorId ? (
                    <Link href={`/users/${note.authorId}`} className="font-medium text-primary hover:underline">{note.authorName}</Link>
                 ) : (
@@ -207,6 +223,18 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
           </div>
         </CardHeader>
         <CardContent>
+             {groupedTags && Object.keys(groupedTags).length > 0 && (
+                <div className="mb-4">
+                    {Object.entries(groupedTags).map(([className, topics]) => (
+                        <div key={className} className="flex items-baseline gap-2 mb-2">
+                            <h4 className="font-semibold">{className}:</h4>
+                            <div className="flex flex-wrap gap-1">
+                                {topics.map(topic => <Badge key={topic} variant="secondary">{topic}</Badge>)}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
           <div className="prose dark:prose-invert max-w-none">
             <p style={{ whiteSpace: 'pre-line' }}>{note.content}</p>
           </div>

@@ -9,7 +9,7 @@ import {
   MoreHorizontal,
   PlusCircle,
 } from "lucide-react"
-import { collection, getDocs, deleteDoc, doc, query, where } from "firebase/firestore"
+import { collection, getDocs, deleteDoc, doc, query, where, orderBy } from "firebase/firestore"
 import { useAuthState } from "react-firebase-hooks/auth"
 
 import { Button } from "@/components/ui/button"
@@ -47,17 +47,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { db, auth } from "@/lib/firebase/firebase"
+import { Badge } from "@/components/ui/badge"
+
+interface NoteTag {
+  class: string;
+  topic: string;
+}
 
 interface Note {
   id: string;
   title: string;
-  subject: string;
   status: string;
   date: string;
   content: string;
   isPublic?: boolean;
   authorName?: string;
   authorId?: string;
+  tags?: NoteTag[];
 }
 
 export default function NotesPage() {
@@ -69,7 +75,7 @@ export default function NotesPage() {
 
     const fetchNotes = async () => {
         // Fetch all public notes
-        const notesQuery = query(collection(db, "notes"), where("isPublic", "==", true));
+        const notesQuery = query(collection(db, "notes"), where("isPublic", "==", true), orderBy("date", "desc"));
         const notesSnapshot = await getDocs(notesQuery);
         const notesList = notesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
         setAllNotes(notesList);
@@ -95,14 +101,14 @@ export default function NotesPage() {
     };
 
     const handleExport = (notesToExport: Note[]) => {
-        const headers = ["Title", "Subject", "Status", "Date", "Content"];
+        const headers = ["Title", "Author", "Date", "Content", "Tags"];
         const rows = notesToExport.map(note => 
             [
                 `"${note.title.replace(/"/g, '""')}"`,
-                `"${note.subject.replace(/"/g, '""')}"`,
-                note.status,
+                 `"${note.authorName?.replace(/"/g, '""')}"`,
                 new Date(note.date).toLocaleDateString(),
-                `"${note.content.replace(/"/g, '""')}"`
+                `"${note.content.replace(/"/g, '""')}"`,
+                `"${note.tags?.map(t => `${t.class}:${t.topic}`).join(', ') || ''}"`
             ].join(',')
         );
 
@@ -139,7 +145,7 @@ export default function NotesPage() {
             <div>
                 <CardTitle>Community Notes</CardTitle>
                 <CardDescription>
-                Manage your personal notes and study materials.
+                A collection of all public notes.
                 </CardDescription>
             </div>
              <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => handleExport(allNotes)}>
@@ -155,7 +161,7 @@ export default function NotesPage() {
                 <TableRow>
                   <TableHead>Title</TableHead>
                   <TableHead>Author</TableHead>
-                  <TableHead>Subject</TableHead>
+                  <TableHead>Tags</TableHead>
                   <TableHead className="hidden md:table-cell">
                     Created at
                   </TableHead>
@@ -173,7 +179,16 @@ export default function NotesPage() {
                     <TableCell>
                          <Link href={`/users/${note.authorId}`} className="hover:underline">{note.authorName}</Link>
                     </TableCell>
-                    <TableCell>{note.subject}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {note.tags?.slice(0, 2).map(tag => (
+                          <Badge key={`${tag.class}-${tag.topic}`} variant="secondary">{tag.topic}</Badge>
+                        ))}
+                         {note.tags && note.tags.length > 2 && (
+                          <Badge variant="outline">+{note.tags.length - 2}</Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="hidden md:table-cell">
                         {new Date(note.date).toLocaleDateString()}
                     </TableCell>
@@ -205,7 +220,7 @@ export default function NotesPage() {
           </CardContent>
           <CardFooter>
             <div className="text-xs text-muted-foreground">
-              Showing <strong>{allNotes.length}</strong> of your notes.
+              Showing <strong>{allNotes.length}</strong> public notes.
             </div>
           </CardFooter>
         </Card>

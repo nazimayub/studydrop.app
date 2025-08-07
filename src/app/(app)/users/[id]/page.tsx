@@ -1,7 +1,7 @@
 
 "use client"
 import { useEffect, useState } from 'react';
-import { doc, getDoc, collection, query, where, getDocs, collectionGroup } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, collectionGroup, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,42 +40,53 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
     useEffect(() => {
         const fetchUserData = async () => {
             setLoading(true);
-            const userDocRef = doc(db, 'users', params.id);
-            const userDocSnap = await getDoc(userDocRef);
+            try {
+                const userDocRef = doc(db, 'users', params.id);
+                const userDocSnap = await getDoc(userDocRef);
 
-            if (userDocSnap.exists()) {
-                setUserProfile(userDocSnap.data() as UserProfile);
+                if (userDocSnap.exists()) {
+                    setUserProfile(userDocSnap.data() as UserProfile);
 
-                // Fetch stats
-                const notesQuery = query(collection(db, "notes"), where("authorId", "==", params.id));
-                const notesSnapshot = await getDocs(notesQuery);
-                
-                const questionsQuery = query(collection(db, "questions"), where("authorId", "==", params.id));
-                const questionsSnapshot = await getDocs(questionsQuery);
-                
-                const answersQuery = query(collectionGroup(db, 'answers'), where("authorId", "==", params.id));
-                const answersSnapshot = await getDocs(answersQuery);
+                    // Fetch stats
+                    const notesQuery = query(collection(db, "notes"), where("authorId", "==", params.id));
+                    const notesSnapshot = await getDocs(notesQuery);
+                    
+                    const questionsQuery = query(collection(db, "questions"), where("authorId", "==", params.id));
+                    const questionsSnapshot = await getDocs(questionsQuery);
+                    
+                    const answersQuery = query(collectionGroup(db, 'answers'), where("authorId", "==", params.id));
+                    const answersSnapshot = await getDocs(answersQuery);
 
-                setUserStats({
-                    notes: notesSnapshot.size,
-                    questions: questionsSnapshot.size,
-                    answers: answersSnapshot.size,
-                });
+                    setUserStats({
+                        notes: notesSnapshot.size,
+                        questions: questionsSnapshot.size,
+                        answers: answersSnapshot.size,
+                    });
 
-                // Fetch recent activity
-                const userNotes = notesSnapshot.docs.map(d => ({...d.data(), id: d.id, type: 'Note', url: `/notes/${d.id}` } as Activity));
-                const userQuestions = questionsSnapshot.docs.map(d => ({...d.data(), id: d.id, type: 'Question', url: `/forum/${d.id}` } as Activity));
-                
-                const combinedActivity = [...userNotes, ...userQuestions]
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                    .slice(0, 5);
+                    // Fetch recent activity
+                    const userNotesQuery = query(collection(db, "notes"), where("authorId", "==", params.id), orderBy("date", "desc"), limit(5));
+                    const userQuestionsQuery = query(collection(db, "questions"), where("authorId", "==", params.id), orderBy("date", "desc"), limit(5));
+                    
+                    const userNotesSnapshot = await getDocs(userNotesQuery);
+                    const userQuestionsSnapshot = await getDocs(userQuestionsQuery);
 
-                setRecentActivity(combinedActivity);
+                    const userNotes = userNotesSnapshot.docs.map(d => ({...d.data(), id: d.id, type: 'Note', url: `/notes/${d.id}` } as Activity));
+                    const userQuestions = userQuestionsSnapshot.docs.map(d => ({...d.data(), id: d.id, type: 'Question', url: `/forum/${d.id}` } as Activity));
+                    
+                    const combinedActivity = [...userNotes, ...userQuestions]
+                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                        .slice(0, 5);
 
-            } else {
-                // Handle user not found
+                    setRecentActivity(combinedActivity);
+
+                } else {
+                    setUserProfile(null);
+                }
+            } catch (error) {
+                console.error("Error fetching user data:", error);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
 
         if (params.id) {
@@ -168,7 +179,7 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
                                         </Link>
                                     </div>
                                     <span className="text-sm text-muted-foreground">
-                                        {new Date(activity.date).toLocaleDateString()}
+                                        {activity.date && new Date(activity.date).toLocaleDateString()}
                                     </span>
                                 </li>
                             ))}
@@ -181,4 +192,3 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
         </div>
     );
 }
-

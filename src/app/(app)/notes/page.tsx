@@ -24,12 +24,13 @@ import {
 } from "@/components/ui/card"
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
 import {
   Table,
@@ -67,6 +68,8 @@ interface Note {
 
 export default function NotesPage() {
     const [notesData, setNotesData] = useState<Note[]>([]);
+    const [filteredNotes, setFilteredNotes] = useState<Note[]>([]);
+    const [statusFilter, setStatusFilter] = useState("all");
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
     const router = useRouter();
@@ -81,6 +84,14 @@ export default function NotesPage() {
     useEffect(() => {
         fetchNotes();
     }, []);
+
+    useEffect(() => {
+        if (statusFilter === "all") {
+            setFilteredNotes(notesData);
+        } else {
+            setFilteredNotes(notesData.filter(note => note.status.toLowerCase() === statusFilter));
+        }
+    }, [statusFilter, notesData]);
 
     const handleDeleteClick = (noteId: string) => {
         setNoteToDelete(noteId);
@@ -101,12 +112,9 @@ export default function NotesPage() {
     <Tabs defaultValue="all">
       <div className="flex items-center">
         <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="published">Published</TabsTrigger>
-          <TabsTrigger value="draft">Draft</TabsTrigger>
-          <TabsTrigger value="archived" className="hidden sm:flex">
-            Archived
-          </TabsTrigger>
+          <TabsTrigger value="all" onClick={() => setStatusFilter('all')}>All</TabsTrigger>
+          <TabsTrigger value="published" onClick={() => setStatusFilter('published')}>Published</TabsTrigger>
+          <TabsTrigger value="draft" onClick={() => setStatusFilter('draft')}>Draft</TabsTrigger>
         </TabsList>
         <div className="ml-auto flex items-center gap-2">
           <DropdownMenu>
@@ -119,12 +127,13 @@ export default function NotesPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+              <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem checked>
-                Subject
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>Status</DropdownMenuCheckboxItem>
+              <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
+                <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="published">Published</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="draft">Draft</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button size="sm" variant="outline" className="h-8 gap-1">
@@ -143,7 +152,7 @@ export default function NotesPage() {
           </Link>
         </div>
       </div>
-      <TabsContent value="all">
+      <TabsContent value={statusFilter}>
         <Card>
           <CardHeader>
             <CardTitle>My Notes</CardTitle>
@@ -167,7 +176,7 @@ export default function NotesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {notesData.map((note) => (
+                {filteredNotes.map((note) => (
                     <TableRow key={note.id}>
                     <TableCell className="font-medium">
                         <Link href={`/notes/${note.id}`} className="hover:underline">{note.title}</Link>
@@ -207,7 +216,7 @@ export default function NotesPage() {
           </CardContent>
           <CardFooter>
             <div className="text-xs text-muted-foreground">
-              Showing <strong>1-{notesData.length}</strong> of <strong>{notesData.length}</strong> notes
+              Showing <strong>1-{filteredNotes.length}</strong> of <strong>{notesData.length}</strong> notes
             </div>
           </CardFooter>
         </Card>

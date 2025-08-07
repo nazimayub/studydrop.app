@@ -38,7 +38,8 @@ interface Answer {
     isAccepted?: boolean;
 }
 
-export default function ForumPostPage({ params: { id } }: { params: { id: string } }) {
+export default function ForumPostPage({ params }: { params: { id: string } }) {
+    const { id } = params;
     const [post, setPost] = useState<Post | null>(null);
     const [answers, setAnswers] = useState<Answer[]>([]);
     const [newAnswer, setNewAnswer] = useState("");
@@ -358,5 +359,7 @@ export default function ForumPostPage({ params: { id } }: { params: { id: string
         </div>
     )
 }
+
+    
 
     

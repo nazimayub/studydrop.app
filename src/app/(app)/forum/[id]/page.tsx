@@ -55,6 +55,13 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     };
 
     useEffect(() => {
+        const incrementViewCount = async () => {
+             const postRef = doc(db, "questions", params.id);
+             await updateDoc(postRef, {
+                views: increment(1)
+            });
+        }
+        incrementViewCount();
         fetchPostAndAnswers();
     }, [params.id]);
 
@@ -83,6 +90,12 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 upvotes: 0,
                 authorId: user.uid,
             });
+
+            const questionRef = doc(db, "questions", params.id);
+            await updateDoc(questionRef, {
+                replies: increment(1)
+            });
+
 
             const userDocRef = doc(db, "users", user.uid);
             await updateDoc(userDocRef, {

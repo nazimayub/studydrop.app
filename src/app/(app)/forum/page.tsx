@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PlusCircle, MessageSquare, Eye, ThumbsUp } from "lucide-react";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
 
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ interface ForumPost {
     views: number;
     replies: number;
     upvotes: number;
+    date: any;
 }
 
 export default function ForumPage() {
@@ -31,7 +32,8 @@ export default function ForumPage() {
     useEffect(() => {
         const fetchPosts = async () => {
             const postsCollection = collection(db, "questions");
-            const postsSnapshot = await getDocs(postsCollection);
+            const q = query(postsCollection, orderBy("date", "desc"));
+            const postsSnapshot = await getDocs(q);
             const postsList = postsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ForumPost));
             setForumPosts(postsList);
         };
@@ -70,7 +72,7 @@ export default function ForumPage() {
                     <CardTitle className="hover:underline">{post.title}</CardTitle>
                 </Link>
                 <CardDescription>
-                  Asked by {post.author}
+                  Asked by {post.author} on {new Date(post.date?.seconds * 1000).toLocaleDateString()}
                 </CardDescription>
               </div>
             </CardHeader>
@@ -88,11 +90,11 @@ export default function ForumPage() {
               </div>
               <div className="flex items-center gap-1">
                 <MessageSquare className="h-4 w-4" />
-                {post.replies} Replies
+                {post.replies || 0} Replies
               </div>
               <div className="flex items-center gap-1">
                 <Eye className="h-4 w-4" />
-                {post.views} Views
+                {post.views || 0} Views
               </div>
             </CardFooter>
           </Card>

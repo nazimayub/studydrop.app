@@ -1,7 +1,6 @@
-
 "use client"
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, orderBy, limit, doc, getDoc, collectionGroup } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, limit, doc, getDoc, collectionGroup, where } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { Award, Star, Trophy } from "lucide-react";

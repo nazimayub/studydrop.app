@@ -64,6 +64,7 @@ interface Note {
   subject: string;
   status: string;
   date: string;
+  content: string;
 }
 
 export default function NotesPage() {
@@ -107,6 +108,28 @@ export default function NotesPage() {
         }
     };
 
+    const handleExport = () => {
+        const headers = ["Title", "Subject", "Status", "Date", "Content"];
+        const rows = filteredNotes.map(note => 
+            [
+                `"${note.title.replace(/"/g, '""')}"`,
+                `"${note.subject.replace(/"/g, '""')}"`,
+                note.status,
+                new Date(note.date).toLocaleDateString(),
+                `"${note.content.replace(/"/g, '""')}"`
+            ].join(',')
+        );
+
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "notes.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
   return (
     <>
     <Tabs defaultValue="all">
@@ -136,7 +159,7 @@ export default function NotesPage() {
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button size="sm" variant="outline" className="h-8 gap-1">
+          <Button size="sm" variant="outline" className="h-8 gap-1" onClick={handleExport}>
             <File className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
               Export

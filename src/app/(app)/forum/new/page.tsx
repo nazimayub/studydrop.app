@@ -3,8 +3,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase/firebase";
+import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase/firebase";
+import { useAuthState } from "react-firebase-hooks/auth";
+
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,16 +21,36 @@ export default function NewQuestionPage() {
     const [description, setDescription] = useState("");
     const [isAnonymous, setIsAnonymous] = useState(false);
     const router = useRouter();
+    const [user] = useAuthState(auth);
 
     const handlePostQuestion = async () => {
+        if (!user) {
+            router.push("/login");
+            return;
+        }
+
+        let authorName = "Anonymous";
+        let authorFallback = "A";
+
+        if (!isAnonymous) {
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                authorName = `${userData.firstName} ${userData.lastName}`;
+                authorFallback = `${userData.firstName?.charAt(0) || ''}${userData.lastName?.charAt(0) || ''}`;
+            }
+        }
+
+
         try {
             await addDoc(collection(db, "questions"), {
                 title,
                 tags: tags.split(",").map(tag => tag.trim()),
                 content: description,
-                author: isAnonymous ? "Anonymous" : "Current User", // Replace with actual user
+                authorId: isAnonymous ? null : user.uid,
+                author: authorName,
                 avatar: "https://placehold.co/40x40.png",
-                fallback: isAnonymous ? "A" : "CU",
+                fallback: authorFallback,
                 date: serverTimestamp(),
                 views: 0,
                 replies: 0,
@@ -61,7 +83,7 @@ export default function NewQuestionPage() {
                         <Textarea id="description" placeholder="Add more details about your question..." rows={10} value={description} onChange={(e) => setDescription(e.target.value)} />
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Checkbox id="anonymous" checked={isAnonymous} onCheckedChange={() => setIsAnonymous(!isAnonymous)} />
+                        <Checkbox id="anonymous" checked={isAnonymous} onCheckedChange={(e) => setIsAnonymous(e === true)} />
                         <Label htmlFor="anonymous">Post anonymously</Label>
                     </div>
                 </CardContent>

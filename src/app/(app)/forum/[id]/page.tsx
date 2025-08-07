@@ -2,7 +2,8 @@
 "use client"
 import { useEffect, useState } from "react";
 import { doc, getDoc, collection, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase/firebase";
+import { db, auth } from "@/lib/firebase/firebase";
+import { useAuthState } from "react-firebase-hooks/auth";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -34,6 +35,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     const [post, setPost] = useState<Post | null>(null);
     const [answers, setAnswers] = useState<Answer[]>([]);
     const [newAnswer, setNewAnswer] = useState("");
+    const [user] = useAuthState(auth);
 
     useEffect(() => {
         const fetchPostAndAnswers = async () => {
@@ -46,7 +48,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
 
             const answersCollection = collection(db, "questions", params.id, "answers");
             const answersSnapshot = await getDocs(answersCollection);
-            const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer));
+            const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer)).sort((a, b) => b.date - a.date);
             setAnswers(answersList);
         };
 
@@ -54,22 +56,33 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     }, [params.id]);
 
     const handlePostAnswer = async () => {
-        if (!newAnswer.trim()) return;
+        if (!newAnswer.trim() || !user) return;
+
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        let authorName = "Anonymous";
+        let authorFallback = "A";
+
+        if (userDoc.exists()) {
+            const userData = userDoc.data();
+            authorName = `${userData.firstName} ${userData.lastName}`;
+            authorFallback = `${userData.firstName?.charAt(0) || ''}${userData.lastName?.charAt(0) || ''}`;
+        }
 
         try {
             await addDoc(collection(db, "questions", params.id, "answers"), {
-                author: "Anonymous", // Replace with actual user later
+                author: authorName,
                 avatar: "https://placehold.co/40x40.png",
-                fallback: "A",
+                fallback: authorFallback,
                 content: newAnswer,
                 date: serverTimestamp(),
                 upvotes: 0,
+                authorId: user.uid,
             });
             setNewAnswer("");
             // Refetch answers
             const answersCollection = collection(db, "questions", params.id, "answers");
             const answersSnapshot = await getDocs(answersCollection);
-            const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer));
+            const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer)).sort((a, b) => b.date - a.date);
             setAnswers(answersList);
         } catch (error) {
             console.error("Error adding document: ", error);
@@ -136,7 +149,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                     <Textarea placeholder="Type your answer here." rows={5} value={newAnswer} onChange={(e) => setNewAnswer(e.target.value)} />
                 </CardContent>
                 <CardFooter>
-                    <Button onClick={handlePostAnswer}>Post Answer</Button>
+                    <Button onClick={handlePostAnswer} disabled={!user}>Post Answer</Button>
                 </CardFooter>
             </Card>
         </div>

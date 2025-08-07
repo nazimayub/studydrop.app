@@ -1,3 +1,6 @@
+
+"use client";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -11,24 +14,52 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
+import { useAuthState } from "react-firebase-hooks/auth"
+import { auth } from "@/lib/firebase/firebase"
+import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
+
 
 export function UserNav() {
+  const [user] = useAuthState(auth);
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push("/");
+  };
+
+  const getFallback = () => {
+    if (user?.displayName) {
+        const parts = user.displayName.split(" ");
+        if (parts.length > 1) {
+            return `${parts[0][0]}${parts[1][0]}`;
+        }
+        return user.displayName.substring(0, 2);
+    }
+    return "SD";
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarImage src="https://placehold.co/40x40.png" alt="@shadcn" />
-            <AvatarFallback>SD</AvatarFallback>
+            <AvatarImage src={user.photoURL || "https://placehold.co/40x40.png"} alt={user.displayName || ""} />
+            <AvatarFallback>{getFallback()}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Studydrop</p>
+            <p className="text-sm font-medium leading-none">{user.displayName || "Studydrop User"}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              student@example.com
+              {user.email}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -48,12 +79,10 @@ export function UserNav() {
           </Link>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <Link href="/">
-            <DropdownMenuItem>
-            Log out
-            <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
-            </DropdownMenuItem>
-        </Link>
+        <DropdownMenuItem onClick={handleLogout}>
+          Log out
+          <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )

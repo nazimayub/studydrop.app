@@ -2,8 +2,9 @@
 "use client"
 import { useState, useEffect } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, updateProfile } from "firebase/auth";
 import { auth, db } from "@/lib/firebase/firebase";
+import { useAuthState } from "react-firebase-hooks/auth";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,29 +16,22 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 
 export default function AccountPage() {
-    const [user, setUser] = useState<any>(null);
+    const [user] = useAuthState(auth);
     const [userData, setUserData] = useState<any>({ name: "", email: "", bio: "" });
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            if (currentUser) {
-                setUser(currentUser);
-                const fetchUserData = async () => {
-                    const userDoc = doc(db, "users", currentUser.uid);
-                    const userSnapshot = await getDoc(userDoc);
-                    if (userSnapshot.exists()) {
-                        const data = userSnapshot.data();
-                        setUserData({ name: `${data.firstName} ${data.lastName}`, email: data.email, bio: data.bio || "" });
-                    }
-                };
-                fetchUserData();
-            } else {
-                setUser(null);
-                setUserData({ name: "", email: "", bio: "" });
-            }
-        });
-        return () => unsubscribe();
-    }, []);
+        if (user) {
+            const fetchUserData = async () => {
+                const userDoc = doc(db, "users", user.uid);
+                const userSnapshot = await getDoc(userDoc);
+                if (userSnapshot.exists()) {
+                    const data = userSnapshot.data();
+                    setUserData({ name: `${data.firstName} ${data.lastName}`, email: data.email, bio: data.bio || "" });
+                }
+            };
+            fetchUserData();
+        }
+    }, [user]);
 
     const handleSaveChanges = async () => {
         if (user) {
@@ -51,6 +45,11 @@ export default function AccountPage() {
                 email: userData.email,
                 bio: userData.bio 
             }, { merge: true });
+
+            await updateProfile(user, {
+                displayName: `${firstName} ${lastName}`
+            })
+
             alert("Changes saved!");
         }
     };

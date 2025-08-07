@@ -4,7 +4,8 @@
 import { useState } from "react";
 import { collection, addDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { db } from "@/lib/firebase/firebase";
+import { db, auth } from "@/lib/firebase/firebase";
+import { useAuthState } from "react-firebase-hooks/auth";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,8 +19,15 @@ export default function NewNotePage() {
     const [noteClass, setNoteClass] = useState("");
     const [content, setContent] = useState("");
     const router = useRouter();
+    const [user] = useAuthState(auth);
 
     const handleCreateNote = async () => {
+        if (!user) {
+            // Handle case where user is not logged in
+            router.push("/login");
+            return;
+        }
+
         try {
             await addDoc(collection(db, "notes"), {
                 title,
@@ -28,6 +36,8 @@ export default function NewNotePage() {
                 content,
                 date: new Date().toISOString(),
                 status: "Published",
+                authorId: user.uid,
+                authorName: user.displayName || "Anonymous",
             });
             router.push("/notes");
         } catch (error) {
@@ -56,8 +66,8 @@ export default function NewNotePage() {
                         <Input id="class" placeholder="e.g. PHYS 101, HIST 230" value={noteClass} onChange={(e) => setNoteClass(e.target.value)} />
                     </div>
                      <div className="grid gap-2">
-                        <Label htmlFor="description">Content</Label>
-                        <Textarea id="description" placeholder="Write your note here..." rows={10} value={content} onChange={(e) => setContent(e.target.value)} />
+                        <Label htmlFor="content">Content</Label>
+                        <Textarea id="content" placeholder="Write your note here..." rows={10} value={content} onChange={(e) => setContent(e.target.value)} />
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end">

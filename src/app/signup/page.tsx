@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { createUserWithEmailAndPassword } from "firebase/auth"
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
 import { doc, setDoc } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase/firebase"
 
@@ -31,6 +31,10 @@ export default function SignupPage() {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
+            await updateProfile(user, {
+                displayName: `${firstName} ${lastName}`
+            });
+
             await setDoc(doc(db, "users", user.uid), {
                 firstName,
                 lastName,
@@ -38,7 +42,7 @@ export default function SignupPage() {
             });
 
             router.push("/dashboard");
-        } catch (error) {
+        } catch (error)
             console.error("Error signing up: ", error);
         }
     }

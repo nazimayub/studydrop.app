@@ -3,8 +3,10 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth"
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth"
 import { auth, googleProvider } from "@/lib/firebase/firebase"
+import { useToast } from "@/hooks/use-toast"
+
 
 import { Button } from "@/components/ui/button"
 import {
@@ -22,14 +24,19 @@ export default function LoginPage() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const router = useRouter()
+    const { toast } = useToast()
 
     const handleLogin = async () => {
         try {
             await signInWithEmailAndPassword(auth, email, password);
             router.push("/dashboard");
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error logging in: ", error);
-            alert("Failed to log in. Please check your credentials.");
+            toast({
+                variant: "destructive",
+                title: "Login Failed",
+                description: error.message || "Please check your credentials and try again.",
+            });
         }
     }
 
@@ -37,9 +44,21 @@ export default function LoginPage() {
         try {
             await signInWithPopup(auth, googleProvider);
             router.push("/dashboard");
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error with Google login: ", error);
-            alert("Failed to log in with Google.");
+            if (error.code === 'auth/popup-closed-by-user') {
+                 toast({
+                    variant: "destructive",
+                    title: "Login Canceled",
+                    description: "You closed the Google login window before completing the process.",
+                });
+                return;
+            }
+            toast({
+                variant: "destructive",
+                title: "Google Login Failed",
+                description: "There was a problem logging in with Google. Please try again.",
+            });
         }
     }
 

@@ -6,6 +6,7 @@ import { useState } from "react"
 import { createUserWithEmailAndPassword, updateProfile, signInWithPopup } from "firebase/auth"
 import { doc, setDoc, getDoc } from "firebase/firestore"
 import { auth, db, googleProvider } from "@/lib/firebase/firebase"
+import { useToast } from "@/hooks/use-toast"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -25,8 +26,18 @@ export default function SignupPage() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const router = useRouter()
+    const { toast } = useToast()
 
     const handleSignUp = async () => {
+        if (!firstName || !lastName || !email || !password) {
+            toast({
+                variant: "destructive",
+                title: "Missing Information",
+                description: "Please fill out all fields to create an account.",
+            });
+            return;
+        }
+
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
@@ -45,9 +56,13 @@ export default function SignupPage() {
             });
 
             router.push("/dashboard");
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error signing up: ", error);
-            alert("Failed to sign up. Please try again.");
+            toast({
+                variant: "destructive",
+                title: "Sign-up Failed",
+                description: error.message || "An unexpected error occurred. Please try again.",
+            });
         }
     }
 
@@ -75,9 +90,21 @@ export default function SignupPage() {
             }
 
             router.push("/dashboard");
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error with Google signup: ", error);
-            alert("Failed to sign up with Google.");
+             if (error.code === 'auth/popup-closed-by-user') {
+                 toast({
+                    variant: "destructive",
+                    title: "Sign-up Canceled",
+                    description: "You closed the Google sign-up window before completing the process.",
+                });
+                return;
+            }
+            toast({
+                variant: "destructive",
+                title: "Google Sign-up Failed",
+                description: "There was a problem signing up with Google. Please try again.",
+            });
         }
     };
 

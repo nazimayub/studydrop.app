@@ -24,6 +24,7 @@ interface Post {
 interface Answer {
     id: string;
     author: string;
+    authorId: string;
     avatar: string;
     fallback: string;
     date: any;
@@ -90,6 +91,38 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
             console.error("Error adding document: ", error);
         }
     };
+
+    const handleUpvoteAnswer = async (answer: Answer) => {
+        if (!user) {
+            alert("You must be logged in to upvote.");
+            return;
+        }
+
+        // Prevent users from upvoting their own answers
+        if (user.uid === answer.authorId) {
+            alert("You cannot upvote your own answer.");
+            return;
+        }
+
+        try {
+            const answerRef = doc(db, "questions", params.id, "answers", answer.id);
+            await updateDoc(answerRef, {
+                upvotes: increment(1)
+            });
+
+            // Award points to the answer's author
+            if (answer.authorId) {
+                const authorRef = doc(db, "users", answer.authorId);
+                await updateDoc(authorRef, {
+                    points: increment(5)
+                });
+            }
+
+            fetchPostAndAnswers(); // Refresh data
+        } catch (error) {
+            console.error("Error upvoting answer: ", error);
+        }
+    };
     
     if (!post) {
         return <div>Loading...</div>;
@@ -134,7 +167,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                             </div>
                         </CardHeader>
                          <CardFooter className="flex justify-end">
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" onClick={() => handleUpvoteAnswer(answer)}>
                                 <ThumbsUp className="mr-2 h-4 w-4" />
                                 {answer.upvotes}
                             </Button>

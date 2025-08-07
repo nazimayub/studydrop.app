@@ -6,6 +6,7 @@ import { doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase/firebase"
 import { summarizeNote, type SummarizeNoteOutput } from "@/ai/flows/summarize-note-flow"
 import { generateFlashcards, type Flashcard } from "@/ai/flows/generate-flashcards-flow"
+import Link from "next/link"
 
 
 import { Button } from "@/components/ui/button"
@@ -18,6 +19,8 @@ interface Note {
   subject: string;
   date: string;
   content: string;
+  authorId: string;
+  authorName: string;
 }
 
 export default function NoteDetailPage({ params }: { params: { id: string } }) {
@@ -102,7 +105,12 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
             <div>
               <CardTitle className="font-headline text-3xl">{note.title}</CardTitle>
               <CardDescription>
-                Subject: {note.subject} | Created on: {new Date(note.date).toLocaleDateString()}
+                Subject: {note.subject} | Created on: {new Date(note.date).toLocaleDateString()} by{" "}
+                {note.authorId ? (
+                   <Link href={`/users/${note.authorId}`} className="font-medium text-primary hover:underline">{note.authorName}</Link>
+                ) : (
+                    <span>{note.authorName}</span>
+                )}
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -207,5 +215,3 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
     </div>
   )
 }
-
-    

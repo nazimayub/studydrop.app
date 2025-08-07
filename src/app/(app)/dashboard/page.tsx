@@ -56,6 +56,7 @@ interface RecentActivity {
     type: 'Note' | 'Question';
     title: string;
     author: string;
+    authorId?: string;
     date: any;
 }
 
@@ -74,6 +75,7 @@ export default function Dashboard() {
             type: 'Note' as const,
             title: doc.data().title,
             author: doc.data().authorName,
+            authorId: doc.data().authorId,
             date: doc.data().date
         }));
 
@@ -85,6 +87,7 @@ export default function Dashboard() {
             type: 'Question' as const,
             title: doc.data().title,
             author: doc.data().author,
+            authorId: doc.data().authorId,
             date: doc.data().date?.toDate() || new Date(doc.data().date)
         }));
 
@@ -215,12 +218,16 @@ export default function Dashboard() {
                   {recentActivity.map(activity => (
                     <TableRow key={activity.id}>
                         <TableCell>
-                            <div className="font-medium">{activity.author}</div>
+                            {activity.authorId ? (
+                                 <Link href={`/users/${activity.authorId}`} className="font-medium hover:underline">{activity.author}</Link>
+                            ) : (
+                                <div className="font-medium">{activity.author}</div>
+                            )}
                         </TableCell>
                         <TableCell>
-                            <div className="hidden text-sm text-muted-foreground md:inline">
+                             <Link href={activity.type === 'Note' ? `/notes/${activity.id}` : `/forum/${activity.id}`} className="hidden text-sm text-muted-foreground md:inline hover:underline">
                                 {activity.title}
-                            </div>
+                            </Link>
                         </TableCell>
                         <TableCell>
                         <Badge className="text-xs" variant="outline">

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { doc, getDoc, collection, getDocs, addDoc, serverTimestamp, updateDoc, increment } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
+import Link from 'next/link';
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -174,6 +175,10 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         return <div>Loading...</div>;
     }
 
+    const UserLink = ({ authorId, children }: { authorId: string, children: React.ReactNode }) => {
+        return authorId ? <Link href={`/users/${authorId}`} className="hover:underline">{children}</Link> : <>{children}</>;
+    };
+
     return (
         <div className="grid gap-6">
             <Card>
@@ -181,10 +186,14 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                     <CardTitle className="font-headline text-3xl">{post.title}</CardTitle>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Avatar className="h-6 w-6">
-                            <AvatarImage src={post.avatar} />
+                             <UserLink authorId={post.authorId}>
+                                <AvatarImage src={post.avatar} />
+                            </UserLink>
                             <AvatarFallback>{post.fallback}</AvatarFallback>
                         </Avatar>
-                        <span>{post.author}</span>
+                        <UserLink authorId={post.authorId}>
+                            <span>{post.author}</span>
+                        </UserLink>
                         <span>&middot;</span>
                         <span>{post.date && new Date(post.date.seconds * 1000).toLocaleDateString()}</span>
                     </div>
@@ -206,13 +215,17 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 {answers.map(answer => (
                     <Card key={answer.id}>
                         <CardHeader className="flex flex-row items-start gap-4">
-                             <Avatar>
-                                <AvatarImage src={answer.avatar} />
-                                <AvatarFallback>{answer.fallback}</AvatarFallback>
-                            </Avatar>
+                            <Link href={`/users/${answer.authorId}`}>
+                                <Avatar>
+                                    <AvatarImage src={answer.avatar} />
+                                    <AvatarFallback>{answer.fallback}</AvatarFallback>
+                                </Avatar>
+                            </Link>
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <span className="font-semibold">{answer.author}</span>
+                                     <UserLink authorId={answer.authorId}>
+                                        <span className="font-semibold">{answer.author}</span>
+                                    </UserLink>
                                     <span className="text-sm text-muted-foreground">&middot; {answer.date && new Date(answer.date.seconds * 1000).toLocaleDateString()}</span>
                                 </div>
                                 <p className="mt-2">{answer.content}</p>

@@ -17,6 +17,7 @@ interface ForumPost {
     id: string;
     title: string;
     author: string;
+    authorId: string;
     avatar: string;
     fallback: string;
     tags: string[];
@@ -41,6 +42,10 @@ export default function ForumPage() {
         fetchPosts();
     }, []);
 
+    const UserLink = ({ authorId, children }: { authorId?: string, children: React.ReactNode }) => {
+        return authorId ? <Link href={`/users/${authorId}`} className="hover:underline">{children}</Link> : <>{children}</>;
+    };
+
   return (
     <div className="grid gap-6">
       <div className="flex items-center justify-between">
@@ -63,16 +68,18 @@ export default function ForumPage() {
         {forumPosts.map(post => (
           <Card key={post.id}>
             <CardHeader className="flex flex-row items-start gap-4">
-              <Avatar>
-                <AvatarImage src={post.avatar} />
-                <AvatarFallback>{post.fallback}</AvatarFallback>
-              </Avatar>
+               <UserLink authorId={post.authorId}>
+                  <Avatar>
+                    <AvatarImage src={post.avatar} />
+                    <AvatarFallback>{post.fallback}</AvatarFallback>
+                  </Avatar>
+               </UserLink>
               <div className="grid gap-1">
                 <Link href={`/forum/${post.id}`}>
                     <CardTitle className="hover:underline">{post.title}</CardTitle>
                 </Link>
                 <CardDescription>
-                  Asked by {post.author} on {new Date(post.date?.seconds * 1000).toLocaleDateString()}
+                  Asked by <UserLink authorId={post.authorId}>{post.author}</UserLink> on {new Date(post.date?.seconds * 1000).toLocaleDateString()}
                 </CardDescription>
               </div>
             </CardHeader>

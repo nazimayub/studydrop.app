@@ -10,6 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Link from "next/link";
+
 
 interface UserData {
     id: string;
@@ -44,14 +46,14 @@ export default function RewardsPage() {
                 setCurrentUserData({ id: user.uid, ...userDocSnap.data() } as UserData);
             }
 
-            const notesSnapshot = await getDocs(collection(db, "notes"));
-            const userNotesCount = notesSnapshot.docs.filter(d => d.data().authorId === user.uid).length;
+            const notesSnapshot = await getDocs(query(collection(db, "notes"), where("authorId", "==", user.uid)));
+            const userNotesCount = notesSnapshot.size;
 
-            const questionsSnapshot = await getDocs(collection(db, "questions"));
-            const userQuestionsCount = questionsSnapshot.docs.filter(d => d.data().authorId === user.uid).length;
+            const questionsSnapshot = await getDocs(query(collection(db, "questions"), where("authorId", "==", user.uid)));
+            const userQuestionsCount = questionsSnapshot.size;
 
-            const answersSnapshot = await getDocs(collectionGroup(db, 'answers'));
-            const userAnswerCount = answersSnapshot.docs.filter(d => d.data().authorId === user.uid).length;
+            const answersSnapshot = await getDocs(query(collectionGroup(db, 'answers'), where("authorId", "==", user.uid)));
+            const userAnswerCount = answersSnapshot.size;
 
             const initialBadges: Omit<Badge, 'achieved' | 'progress'>[] = [
                 { name: "First Note", icon: Star, description: "Create your first note.", goal: 1 },
@@ -86,7 +88,9 @@ export default function RewardsPage() {
             setLeaderboard(leaderboardData);
         };
         
-        fetchUserData();
+        if (user) {
+            fetchUserData();
+        }
         fetchLeaderboard();
 
     }, [user]);
@@ -153,13 +157,13 @@ export default function RewardsPage() {
                                     <TableRow key={entry.id} className={entry.id === user?.uid ? 'bg-accent/10' : ''}>
                                         <TableCell className="font-medium text-lg">{index + 1}</TableCell>
                                         <TableCell>
-                                            <div className="flex items-center gap-2">
+                                            <Link href={`/users/${entry.id}`} className="flex items-center gap-2 hover:underline">
                                                 <Avatar>
                                                     <AvatarImage src={entry.photoURL} />
                                                     <AvatarFallback>{`${entry.firstName?.charAt(0) || ''}${entry.lastName?.charAt(0) || ''}`}</AvatarFallback>
                                                 </Avatar>
                                                 <span>{entry.id === user?.uid ? 'You' : `${entry.firstName} ${entry.lastName}`}</span>
-                                            </div>
+                                            </Link>
                                         </TableCell>
                                         <TableCell className="text-right font-semibold">{entry.points.toLocaleString()}</TableCell>
                                     </TableRow>

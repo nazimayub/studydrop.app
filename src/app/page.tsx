@@ -64,7 +64,7 @@ export default function LandingPage() {
                 width="600"
                 height="400"
                 alt="Hero"
-                data-ai-hint="students collaborating"
+                data-ai-hint="students studying"
                 className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square"
               />
             </div>
@@ -128,7 +128,7 @@ export default function LandingPage() {
                   <p className="mb-4">"This app is a game-changer. The AI summaries save me hours of review time before exams."</p>
                   <div className="flex items-center gap-4">
                     <Avatar>
-                      <AvatarImage src="https://placehold.co/40x40.png" />
+                      <AvatarImage src="https://placehold.co/40x40.png" data-ai-hint="female student" />
                       <AvatarFallback>JD</AvatarFallback>
                     </Avatar>
                     <div>
@@ -143,7 +143,7 @@ export default function LandingPage() {
                   <p className="mb-4">"The rewards system actually makes studying fun. I'm more motivated than ever to participate."</p>
                   <div className="flex items-center gap-4">
                     <Avatar>
-                      <AvatarImage src="https://placehold.co/40x40.png" />
+                      <AvatarImage src="https://placehold.co/40x40.png" data-ai-hint="male student" />
                       <AvatarFallback>SM</AvatarFallback>
                     </Avatar>
                     <div>

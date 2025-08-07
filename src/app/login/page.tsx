@@ -27,6 +27,14 @@ export default function LoginPage() {
     const { toast } = useToast()
 
     const handleLogin = async () => {
+        if (!email || !password) {
+            toast({
+                variant: "destructive",
+                title: "Login Failed",
+                description: "Please enter both email and password.",
+            });
+            return;
+        }
         try {
             await signInWithEmailAndPassword(auth, email, password);
             router.push("/dashboard");
@@ -35,7 +43,7 @@ export default function LoginPage() {
             toast({
                 variant: "destructive",
                 title: "Login Failed",
-                description: error.message || "Please check your credentials and try again.",
+                description: "Please check your credentials and try again.",
             });
         }
     }

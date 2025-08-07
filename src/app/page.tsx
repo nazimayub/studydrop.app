@@ -60,11 +60,10 @@ export default function LandingPage() {
                 </div>
               </div>
               <Image
-                src="https://placehold.co/600x400.png"
+                src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop"
                 width="600"
                 height="400"
                 alt="Hero"
-                data-ai-hint="students studying"
                 className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square"
               />
             </div>
@@ -128,7 +127,7 @@ export default function LandingPage() {
                   <p className="mb-4">"This app is a game-changer. The AI summaries save me hours of review time before exams."</p>
                   <div className="flex items-center gap-4">
                     <Avatar>
-                      <AvatarImage src="https://placehold.co/40x40.png" data-ai-hint="female student" />
+                      <AvatarImage src="https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=1887&auto=format&fit=crop" />
                       <AvatarFallback>JD</AvatarFallback>
                     </Avatar>
                     <div>
@@ -143,7 +142,7 @@ export default function LandingPage() {
                   <p className="mb-4">"The rewards system actually makes studying fun. I'm more motivated than ever to participate."</p>
                   <div className="flex items-center gap-4">
                     <Avatar>
-                      <AvatarImage src="https://placehold.co/40x40.png" data-ai-hint="male student" />
+                      <AvatarImage src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=1887&auto=format&fit=crop" />
                       <AvatarFallback>SM</AvatarFallback>
                     </Avatar>
                     <div>

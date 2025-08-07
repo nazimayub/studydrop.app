@@ -1,4 +1,9 @@
+
+"use client"
+
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import React, { useState } from "react"
 import {
   Award,
   BookOpen,
@@ -45,6 +50,15 @@ export default function AppLayout({
 }: {
   children: React.ReactNode
 }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
+
+  const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  }
+
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
       <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
@@ -111,6 +125,9 @@ export default function AppLayout({
               type="search"
               placeholder="Search..."
               className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[336px]"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearch}
             />
           </div>
           <UserNav />

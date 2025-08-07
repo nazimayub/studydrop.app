@@ -6,6 +6,7 @@ import { collection, addDoc, doc, updateDoc, increment } from "firebase/firestor
 import { useRouter } from "next/navigation";
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
+import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,7 @@ export default function NewNotePage() {
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
     const [user] = useAuthState(auth);
+    const { toast } = useToast();
 
     const handleCreateNote = async () => {
         if (!user) {
@@ -45,12 +47,22 @@ export default function NewNotePage() {
             
             const userDocRef = doc(db, "users", user.uid);
             await updateDoc(userDocRef, {
-                points: increment(10)
+                points: increment(100)
             });
 
-            router.push("/notes");
+            toast({
+                title: "Note Created!",
+                description: "Your new note has been saved.",
+            })
+
+            router.push("/dashboard");
         } catch (error) {
             console.error("Error adding document: ", error);
+             toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Could not create the note. Please try again.",
+            });
         } finally {
             setIsLoading(false);
         }

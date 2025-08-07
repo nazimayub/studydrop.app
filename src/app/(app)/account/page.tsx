@@ -6,6 +6,7 @@ import { updateProfile } from "firebase/auth";
 import { auth, db, storage } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,7 @@ export default function AccountPage() {
     const [user] = useAuthState(auth);
     const [userData, setUserData] = useState<UserData>({ name: "", email: "", bio: "", photoURL: "" });
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const { toast } = useToast();
 
     useEffect(() => {
         if (user) {
@@ -60,7 +62,9 @@ export default function AccountPage() {
     }
 
     const handleSaveChanges = async () => {
-        if (user) {
+        if (!user) return;
+        
+        try {
             let photoURL = userData.photoURL;
 
             if (avatarFile) {
@@ -69,10 +73,13 @@ export default function AccountPage() {
                 photoURL = await getDownloadURL(storageRef);
             }
             
-            await updateProfile(user, {
-                displayName: userData.name,
-                photoURL: photoURL
-            })
+            if(auth.currentUser) {
+              await updateProfile(auth.currentUser, {
+                  displayName: userData.name,
+                  photoURL: photoURL
+              });
+            }
+
 
             const userDoc = doc(db, "users", user.uid);
             const [firstName, ...lastNameParts] = userData.name.split(" ");
@@ -86,8 +93,17 @@ export default function AccountPage() {
                 photoURL: photoURL
             }, { merge: true });
 
-
-            alert("Changes saved!");
+            toast({
+                title: "Success!",
+                description: "Your profile has been updated.",
+            });
+        } catch (error) {
+            console.error("Error saving changes: ", error);
+             toast({
+                variant: "destructive",
+                title: "Uh oh!",
+                description: "There was a problem saving your changes.",
+            });
         }
     };
     

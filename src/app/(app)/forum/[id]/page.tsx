@@ -5,6 +5,7 @@ import { doc, getDoc, collection, getDocs, addDoc, serverTimestamp, updateDoc, i
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import Link from 'next/link';
+import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -40,6 +41,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     const [answers, setAnswers] = useState<Answer[]>([]);
     const [newAnswer, setNewAnswer] = useState("");
     const [user] = useAuthState(auth);
+    const { toast } = useToast();
 
     const fetchPostAndAnswers = async () => {
         const postDoc = doc(db, "questions", params.id);
@@ -112,12 +114,19 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
 
     const handleUpvoteQuestion = async () => {
         if (!user) {
-            alert("You must be logged in to upvote.");
+            toast({
+                variant: "destructive",
+                title: "Login Required",
+                description: "You must be logged in to upvote.",
+            });
             return;
         }
 
         if (user.uid === post?.authorId) {
-            alert("You cannot upvote your own question.");
+            toast({
+                variant: "destructive",
+                description: "You cannot upvote your own question.",
+            });
             return;
         }
 
@@ -143,12 +152,19 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
 
     const handleUpvoteAnswer = async (answer: Answer) => {
         if (!user) {
-            alert("You must be logged in to upvote.");
+            toast({
+                variant: "destructive",
+                title: "Login Required",
+                description: "You must be logged in to upvote.",
+            });
             return;
         }
 
         if (user.uid === answer.authorId) {
-            alert("You cannot upvote your own answer.");
+             toast({
+                variant: "destructive",
+                description: "You cannot upvote your own answer.",
+            });
             return;
         }
 

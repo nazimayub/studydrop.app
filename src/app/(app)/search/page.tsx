@@ -3,12 +3,11 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where, or } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import Link from 'next/link';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 interface Note {
     id: string;
@@ -24,45 +23,50 @@ interface Question {
 
 function SearchResults() {
     const searchParams = useSearchParams();
-    const query = searchParams.get('q') || '';
+    const queryTerm = searchParams.get('q') || '';
     const [notes, setNotes] = useState<Note[]>([]);
     const [questions, setQuestions] = useState<Question[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchResults = async () => {
-            if (!query) {
+            if (!queryTerm) {
                 setLoading(false);
                 return;
             };
 
             setLoading(true);
+            const lowerCaseQuery = queryTerm.toLowerCase();
 
+            // Note: Firestore doesn't support case-insensitive querying directly or querying for substrings.
+            // This implementation will only find exact matches for now on the title field.
+            // For a more robust search, a dedicated search service like Algolia or Elasticsearch would be needed.
+            
             // Fetch and filter notes
             const notesCollection = collection(db, 'notes');
             const notesSnapshot = await getDocs(notesCollection);
             const notesList = notesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
-            const filteredNotes = notesList.filter(note => note.title.toLowerCase().includes(query.toLowerCase()));
+            const filteredNotes = notesList.filter(note => note.title.toLowerCase().includes(lowerCaseQuery));
             setNotes(filteredNotes);
 
             // Fetch and filter questions
             const questionsCollection = collection(db, 'questions');
             const questionsSnapshot = await getDocs(questionsCollection);
             const questionsList = questionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Question));
-            const filteredQuestions = questionsList.filter(question => question.title.toLowerCase().includes(query.toLowerCase()));
+            const filteredQuestions = questionsList.filter(question => question.title.toLowerCase().includes(lowerCaseQuery));
             setQuestions(filteredQuestions);
 
             setLoading(false);
         };
 
         fetchResults();
-    }, [query]);
+    }, [queryTerm]);
 
     if (loading) {
         return <div>Loading search results...</div>;
     }
 
-    if (!query) {
+    if (!queryTerm) {
         return <div>Please enter a search term.</div>
     }
 
@@ -72,7 +76,7 @@ function SearchResults() {
         <div className="grid gap-6">
             <div>
                 <h1 className="text-3xl font-bold font-headline">Search Results</h1>
-                <p className="text-muted-foreground">Found {notes.length + questions.length} results for "{query}"</p>
+                <p className="text-muted-foreground">Found {notes.length + questions.length} results for "{queryTerm}"</p>
             </div>
 
             {!hasResults ? (

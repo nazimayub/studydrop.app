@@ -41,7 +41,7 @@ export default function SignupPage() {
                 email,
                 points: 0,
                 bio: "",
-                photoURL: user.photoURL || ""
+                photoURL: ""
             });
 
             router.push("/dashboard");

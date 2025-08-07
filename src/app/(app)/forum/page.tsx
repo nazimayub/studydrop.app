@@ -84,7 +84,7 @@ export default function ForumPage() {
             <CardFooter className="flex justify-end space-x-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <ThumbsUp className="h-4 w-4" />
-                {post.upvotes}
+                {post.upvotes || 0}
               </div>
               <div className="flex items-center gap-1">
                 <MessageSquare className="h-4 w-4" />

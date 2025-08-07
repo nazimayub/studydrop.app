@@ -15,10 +15,12 @@ interface Post {
     id: string;
     title: string;
     author: string;
+    authorId: string;
     avatar: string;
     fallback: string;
     date: any;
     content: string;
+    upvotes: number;
 }
 
 interface Answer {
@@ -94,13 +96,43 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         }
     };
 
+    const handleUpvoteQuestion = async () => {
+        if (!user) {
+            alert("You must be logged in to upvote.");
+            return;
+        }
+
+        if (user.uid === post?.authorId) {
+            alert("You cannot upvote your own question.");
+            return;
+        }
+
+        try {
+            const questionRef = doc(db, "questions", params.id);
+            await updateDoc(questionRef, {
+                upvotes: increment(1)
+            });
+
+            if (post?.authorId) {
+                const authorRef = doc(db, "users", post.authorId);
+                await updateDoc(authorRef, {
+                    points: increment(2) 
+                });
+            }
+
+            fetchPostAndAnswers();
+        } catch (error) {
+            console.error("Error upvoting question: ", error);
+        }
+    };
+
+
     const handleUpvoteAnswer = async (answer: Answer) => {
         if (!user) {
             alert("You must be logged in to upvote.");
             return;
         }
 
-        // Prevent users from upvoting their own answers
         if (user.uid === answer.authorId) {
             alert("You cannot upvote your own answer.");
             return;
@@ -112,7 +144,6 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 upvotes: increment(1)
             });
 
-            // Award points to the answer's author
             if (answer.authorId) {
                 const authorRef = doc(db, "users", answer.authorId);
                 await updateDoc(authorRef, {
@@ -120,7 +151,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 });
             }
 
-            fetchPostAndAnswers(); // Refresh data
+            fetchPostAndAnswers(); 
         } catch (error) {
             console.error("Error upvoting answer: ", error);
         }
@@ -148,6 +179,12 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 <CardContent>
                     <p className="whitespace-pre-wrap">{post.content}</p>
                 </CardContent>
+                 <CardFooter className="flex justify-end">
+                    <Button variant="ghost" size="sm" onClick={handleUpvoteQuestion}>
+                        <ThumbsUp className="mr-2 h-4 w-4" />
+                        {post.upvotes}
+                    </Button>
+                </CardFooter>
             </Card>
 
             <h2 className="text-2xl font-bold font-headline">{answers.length} Answers</h2>

@@ -114,7 +114,7 @@ export default function RewardsPage() {
             <TabsContent value="badges">
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {badges.map(badge => (
-                        <Card key={badge.name} className={badge.achieved ? 'bg-accent/10' : ''}>
+                        <Card key={badge.name} className={badge.achieved ? 'border-accent bg-accent/10' : ''}>
                             <CardHeader>
                                 <div className="flex items-center gap-4">
                                     <badge.icon className={`h-8 w-8 ${badge.achieved ? 'text-accent' : 'text-muted-foreground'}`} />
@@ -124,7 +124,7 @@ export default function RewardsPage() {
                                     </div>
                                 </div>
                             </CardHeader>
-                            {badge.progress !== undefined && (
+                            {!badge.achieved && badge.progress !== undefined && (
                                 <CardContent>
                                     <Progress value={badge.progress} className="h-2" />
                                 </CardContent>

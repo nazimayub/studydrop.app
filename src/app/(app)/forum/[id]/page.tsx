@@ -62,17 +62,19 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         const userDoc = await getDoc(doc(db, "users", user.uid));
         let authorName = "Anonymous";
         let authorFallback = "A";
+        let authorAvatar = "";
 
         if (userDoc.exists()) {
             const userData = userDoc.data();
             authorName = `${userData.firstName} ${userData.lastName}`;
             authorFallback = `${userData.firstName?.charAt(0) || ''}${userData.lastName?.charAt(0) || ''}`;
+            authorAvatar = userData.photoURL || "";
         }
 
         try {
             await addDoc(collection(db, "questions", params.id, "answers"), {
                 author: authorName,
-                avatar: "https://placehold.co/40x40.png",
+                avatar: authorAvatar,
                 fallback: authorFallback,
                 content: newAnswer,
                 date: serverTimestamp(),

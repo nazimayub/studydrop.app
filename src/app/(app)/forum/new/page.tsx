@@ -31,6 +31,7 @@ export default function NewQuestionPage() {
 
         let authorName = "Anonymous";
         let authorFallback = "A";
+        let authorAvatar = "";
 
         if (!isAnonymous) {
             const userDoc = await getDoc(doc(db, "users", user.uid));
@@ -38,6 +39,7 @@ export default function NewQuestionPage() {
                 const userData = userDoc.data();
                 authorName = `${userData.firstName} ${userData.lastName}`;
                 authorFallback = `${userData.firstName?.charAt(0) || ''}${userData.lastName?.charAt(0) || ''}`;
+                authorAvatar = userData.photoURL || "";
             }
         }
 
@@ -49,7 +51,7 @@ export default function NewQuestionPage() {
                 content: description,
                 authorId: isAnonymous ? null : user.uid,
                 author: authorName,
-                avatar: "https://placehold.co/40x40.png",
+                avatar: authorAvatar,
                 fallback: authorFallback,
                 date: serverTimestamp(),
                 views: 0,

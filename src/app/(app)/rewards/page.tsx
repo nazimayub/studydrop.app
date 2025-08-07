@@ -16,6 +16,7 @@ interface UserData {
     firstName: string;
     lastName: string;
     points: number;
+    photoURL?: string;
 }
 
 interface Badge {
@@ -154,7 +155,7 @@ export default function RewardsPage() {
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 <Avatar>
-                                                    <AvatarImage src={"https://placehold.co/40x40.png"} />
+                                                    <AvatarImage src={entry.photoURL} />
                                                     <AvatarFallback>{`${entry.firstName?.charAt(0) || ''}${entry.lastName?.charAt(0) || ''}`}</AvatarFallback>
                                                 </Avatar>
                                                 <span>{entry.id === user?.uid ? 'You' : `${entry.firstName} ${entry.lastName}`}</span>

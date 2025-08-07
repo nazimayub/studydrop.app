@@ -1,10 +1,11 @@
 
 "use client"
-import { useState, useEffect } from "react";
+import { useState, useEffect, ChangeEvent } from "react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { onAuthStateChanged, updateProfile } from "firebase/auth";
-import { auth, db } from "@/lib/firebase/firebase";
+import { auth, db, storage } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +18,8 @@ import { Switch } from "@/components/ui/switch";
 
 export default function AccountPage() {
     const [user] = useAuthState(auth);
-    const [userData, setUserData] = useState<any>({ name: "", email: "", bio: "" });
+    const [userData, setUserData] = useState<any>({ name: "", email: "", bio: "", photoURL: "" });
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
     useEffect(() => {
         if (user) {
@@ -26,15 +28,40 @@ export default function AccountPage() {
                 const userSnapshot = await getDoc(userDoc);
                 if (userSnapshot.exists()) {
                     const data = userSnapshot.data();
-                    setUserData({ name: `${data.firstName} ${data.lastName}`, email: data.email, bio: data.bio || "" });
+                    setUserData({ 
+                        name: `${data.firstName} ${data.lastName}`, 
+                        email: data.email, 
+                        bio: data.bio || "",
+                        photoURL: user.photoURL || ""
+                    });
                 }
             };
             fetchUserData();
         }
     }, [user]);
+    
+    const handleAvatarChange = (e: ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setAvatarFile(e.target.files[0]);
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setUserData((prev: any) => ({ ...prev, photoURL: event.target?.result as string }));
+            }
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    }
 
     const handleSaveChanges = async () => {
         if (user) {
+            let photoURL = user.photoURL;
+
+            if (avatarFile) {
+                const storageRef = ref(storage, `avatars/${user.uid}`);
+                await uploadBytes(storageRef, avatarFile);
+                photoURL = await getDownloadURL(storageRef);
+                await updateProfile(user, { photoURL });
+            }
+
             const userDoc = doc(db, "users", user.uid);
             const [firstName, ...lastNameParts] = userData.name.split(" ");
             const lastName = lastNameParts.join(" ");
@@ -43,11 +70,13 @@ export default function AccountPage() {
                 firstName,
                 lastName,
                 email: userData.email,
-                bio: userData.bio 
+                bio: userData.bio,
+                photoURL: photoURL
             }, { merge: true });
 
             await updateProfile(user, {
-                displayName: `${firstName} ${lastName}`
+                displayName: `${firstName} ${lastName}`,
+                photoURL: photoURL
             })
 
             alert("Changes saved!");
@@ -58,6 +87,17 @@ export default function AccountPage() {
         const { id, value } = e.target;
         setUserData((prev: any) => ({ ...prev, [id]: value }));
     };
+
+    const getFallback = () => {
+        if (userData.name) {
+            const parts = userData.name.split(" ");
+            if (parts.length > 1) {
+                return `${parts[0][0]}${parts[1][0]}`;
+            }
+            return userData.name.substring(0, 2);
+        }
+        return "SD";
+    }
 
   return (
     <div className="grid gap-6">
@@ -79,10 +119,11 @@ export default function AccountPage() {
             <CardContent className="space-y-6">
                 <div className="flex items-center gap-4">
                     <Avatar className="h-20 w-20">
-                        <AvatarImage src="https://placehold.co/80x80.png" />
-                        <AvatarFallback>SD</AvatarFallback>
+                        <AvatarImage src={userData.photoURL} />
+                        <AvatarFallback>{getFallback()}</AvatarFallback>
                     </Avatar>
-                    <Button variant="outline">Change Avatar</Button>
+                     <Input id="avatar-upload" type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                    <Button variant="outline" onClick={() => document.getElementById('avatar-upload')?.click()}>Change Avatar</Button>
                 </div>
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>

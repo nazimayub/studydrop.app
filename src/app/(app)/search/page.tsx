@@ -13,12 +13,15 @@ interface Note {
     id: string;
     title: string;
     subject: string;
+    content: string;
+    isPublic: boolean;
 }
 
 interface Question {
     id: string;
     title: string;
     author: string;
+    content: string;
 }
 
 function SearchResults() {
@@ -38,22 +41,26 @@ function SearchResults() {
             setLoading(true);
             const lowerCaseQuery = queryTerm.toLowerCase();
 
-            // Note: Firestore doesn't support case-insensitive querying directly or querying for substrings.
-            // This implementation will only find exact matches for now on the title field.
-            // For a more robust search, a dedicated search service like Algolia or Elasticsearch would be needed.
-            
             // Fetch and filter notes
             const notesCollection = collection(db, 'notes');
             const notesSnapshot = await getDocs(notesCollection);
             const notesList = notesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
-            const filteredNotes = notesList.filter(note => note.title.toLowerCase().includes(lowerCaseQuery));
+            const filteredNotes = notesList.filter(note => 
+                note.isPublic && (
+                    note.title.toLowerCase().includes(lowerCaseQuery) ||
+                    note.content.toLowerCase().includes(lowerCaseQuery)
+                )
+            );
             setNotes(filteredNotes);
 
             // Fetch and filter questions
             const questionsCollection = collection(db, 'questions');
             const questionsSnapshot = await getDocs(questionsCollection);
             const questionsList = questionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Question));
-            const filteredQuestions = questionsList.filter(question => question.title.toLowerCase().includes(lowerCaseQuery));
+            const filteredQuestions = questionsList.filter(question => 
+                question.title.toLowerCase().includes(lowerCaseQuery) ||
+                question.content.toLowerCase().includes(lowerCaseQuery)
+            );
             setQuestions(filteredQuestions);
 
             setLoading(false);

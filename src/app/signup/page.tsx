@@ -3,9 +3,9 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { createUserWithEmailAndPassword, updateProfile, signInWithPopup } from "firebase/auth"
+import { createUserWithEmailAndPassword, updateProfile, signInWithPopup, GoogleAuthProvider } from "firebase/auth"
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"
-import { auth, db, GoogleAuthProvider } from "@/lib/firebase/firebase"
+import { auth, db } from "@/lib/firebase/firebase"
 import { useToast } from "@/hooks/use-toast"
 
 import { Button } from "@/components/ui/button"
@@ -132,7 +132,7 @@ export default function SignupPage() {
           <CardDescription>
             Enter your information to create an account
           </CardDescription>
-        </Header>
+        </CardHeader>
         <CardContent>
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">

@@ -51,6 +51,7 @@ export default function LoginPage() {
     const handleGoogleLogin = async () => {
         try {
             const provider = new GoogleAuthProvider();
+            provider.setCustomParameters({ prompt: 'select_account' });
             await signInWithPopup(auth, provider);
             router.push("/dashboard");
         } catch (error: any) {

@@ -31,6 +31,7 @@ interface Note {
 }
 
 export default function NoteDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const [note, setNote] = useState<Note | null>(null);
   const [summary, setSummary] = useState<SummarizeNoteOutput | null>(null);
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
@@ -43,15 +44,17 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     const fetchNote = async () => {
-      const noteDoc = doc(db, "notes", params.id);
+      const noteDoc = doc(db, "notes", id);
       const noteSnapshot = await getDoc(noteDoc);
       if (noteSnapshot.exists()) {
         setNote(noteSnapshot.data() as Note);
       }
     };
 
-    fetchNote();
-  }, [params.id]);
+    if (id) {
+      fetchNote();
+    }
+  }, [id]);
 
   const handleSummarize = async () => {
     if (!note) return;
@@ -243,3 +246,5 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
     </div>
   )
 }
+
+    

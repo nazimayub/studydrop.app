@@ -32,6 +32,7 @@ interface Activity {
 }
 
 export default function UserProfilePage({ params }: { params: { id: string } }) {
+    const { id } = params;
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [userStats, setUserStats] = useState<UserStats>({ notes: 0, questions: 0, answers: 0 });
     const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
@@ -41,20 +42,20 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
         const fetchUserData = async () => {
             setLoading(true);
             try {
-                const userDocRef = doc(db, 'users', params.id);
+                const userDocRef = doc(db, 'users', id);
                 const userDocSnap = await getDoc(userDocRef);
 
                 if (userDocSnap.exists()) {
                     setUserProfile(userDocSnap.data() as UserProfile);
 
                     // Fetch stats
-                    const notesQuery = query(collection(db, "notes"), where("authorId", "==", params.id), where("isPublic", "==", true));
+                    const notesQuery = query(collection(db, "notes"), where("authorId", "==", id), where("isPublic", "==", true));
                     const notesSnapshot = await getDocs(notesQuery);
                     
-                    const questionsQuery = query(collection(db, "questions"), where("authorId", "==", params.id));
+                    const questionsQuery = query(collection(db, "questions"), where("authorId", "==", id));
                     const questionsSnapshot = await getDocs(questionsQuery);
                     
-                    const answersQuery = query(collectionGroup(db, 'answers'), where("authorId", "==", params.id));
+                    const answersQuery = query(collectionGroup(db, 'answers'), where("authorId", "==", id));
                     const answersSnapshot = await getDocs(answersQuery);
 
                     setUserStats({
@@ -64,8 +65,8 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
                     });
 
                     // Fetch recent activity
-                    const userNotesQuery = query(collection(db, "notes"), where("authorId", "==", params.id), where("isPublic", "==", true), orderBy("date", "desc"), limit(5));
-                    const userQuestionsQuery = query(collection(db, "questions"), where("authorId", "==", params.id), orderBy("date", "desc"), limit(5));
+                    const userNotesQuery = query(collection(db, "notes"), where("authorId", "==", id), where("isPublic", "==", true), orderBy("date", "desc"), limit(5));
+                    const userQuestionsQuery = query(collection(db, "questions"), where("authorId", "==", id), orderBy("date", "desc"), limit(5));
                     
                     const userNotesSnapshot = await getDocs(userNotesQuery);
                     const userQuestionsSnapshot = await getDocs(userQuestionsQuery);
@@ -89,10 +90,10 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
             }
         };
 
-        if (params.id) {
+        if (id) {
             fetchUserData();
         }
-    }, [params.id]);
+    }, [id]);
 
     const getFallback = () => {
         if (userProfile?.firstName && userProfile?.lastName) {
@@ -192,3 +193,5 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
         </div>
     );
 }
+
+    

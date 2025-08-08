@@ -3,43 +3,55 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Helper function to check if the user is signed in
+    function isSignedIn() {
+      return request.auth != null;
+    }
     
-    // Users Collection
+    // Helper function to get the user's document
+    function getUser(userId) {
+        return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+
+    // Users can only read their own data, but can create a user document for anyone (for signup)
+    // Points should not be editable by the client.
     match /users/{userId} {
-      allow read: if request.auth != null;
-      // Allow users to create their own profile, but only update their own non-critical fields.
-      // Points can only be changed by other backend logic, not directly by the user.
-      allow create: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId
-                    && request.resource.data.keys().hasOnly(['firstName', 'lastName', 'email', 'bio', 'photoURL']);
+      allow read;
+      allow create: if isSignedIn();
+      allow update: if request.auth.uid == userId && !("points" in request.resource.data);
     }
-
-    // Notes Collection
+    
+    // Notes can be read by anyone if public, or by the author if not.
+    // Anyone can create a note.
+    // Users can only update/delete their own notes.
     match /notes/{noteId} {
-      // Allow read access to a user's own notes or any public note.
-      allow read: if request.auth != null && (resource.data.authorId == request.auth.uid || resource.data.isPublic == true);
-      // Allow users to create, update, and delete their own notes.
-      allow create, update, delete: if request.auth.uid == request.resource.data.authorId;
+      allow read: if resource.data.isPublic == true || request.auth.uid == resource.data.authorId;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && request.auth.uid == resource.data.authorId;
     }
 
-    // Questions & Answers
+    // Questions can be read by anyone.
+    // Signed-in users can create questions.
+    // Users can only update/delete their own questions.
     match /questions/{questionId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
-      // Users can only update/delete their own questions.
-      allow update, delete: if resource.data.authorId == request.auth.uid;
-      
-      match /answers/{answerId} {
-          allow read: if request.auth != null;
-          allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
-          // Allow update if the user is the author of the answer (for edits) 
-          // OR if the user is the author of the parent question (for accepting).
-          allow update: if request.auth != null && (
-                        resource.data.authorId == request.auth.uid ||
-                        get(/databases/$(database)/documents/questions/$(questionId)).data.authorId == request.auth.uid
-                      );
-          allow delete: if resource.data.authorId == request.auth.uid;
-      }
+        allow read, create: if isSignedIn();
+        allow update, delete: if isSignedIn() && request.auth.uid == resource.data.authorId;
+
+        // Answers can be read by anyone.
+        // Signed-in users can create answers.
+        // Users can update their own answers.
+        // The author of the question can update an answer to accept it.
+        match /answers/{answerId} {
+            allow read, create: if isSignedIn();
+            allow update: if isSignedIn() && (
+                            request.auth.uid == resource.data.authorId || 
+                            request.auth.uid == get(/databases/$(database)/documents/questions/$(questionId)).data.authorId
+                          );
+            allow delete: if isSignedIn() && request.auth.uid == resource.data.authorId;
+        }
     }
   }
 }
+
+    

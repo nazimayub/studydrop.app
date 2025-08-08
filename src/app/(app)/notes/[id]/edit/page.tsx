@@ -22,6 +22,7 @@ interface Note {
 }
 
 export default function EditNotePage({ params }: { params: { id: string } }) {
+    const { id } = params;
     const [note, setNote] = useState<Note | null>(null);
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
@@ -29,7 +30,7 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
 
     useEffect(() => {
         const fetchNote = async () => {
-            const noteDoc = doc(db, "notes", params.id);
+            const noteDoc = doc(db, "notes", id);
             const noteSnapshot = await getDoc(noteDoc);
             if (noteSnapshot.exists()) {
                 const noteData = noteSnapshot.data() as Note;
@@ -41,18 +42,20 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
             }
         };
 
-        fetchNote();
-    }, [params.id, router]);
+        if (id) {
+            fetchNote();
+        }
+    }, [id, router]);
 
     const handleUpdateNote = async () => {
         try {
-            const noteDoc = doc(db, "notes", params.id);
+            const noteDoc = doc(db, "notes", id);
             await updateDoc(noteDoc, {
                 title,
                 content,
                 isPublic: true // All notes are public now
             });
-            router.push(`/notes/${params.id}`);
+            router.push(`/notes/${id}`);
         } catch (error) {
             console.error("Error updating document: ", error);
         }
@@ -87,3 +90,5 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
         </div>
     )
 }
+
+    

@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth"
-import { auth, googleProvider } from "@/lib/firebase/firebase"
+import { auth } from "@/lib/firebase/firebase"
 import { useToast } from "@/hooks/use-toast"
 
 

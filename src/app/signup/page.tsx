@@ -3,9 +3,9 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { createUserWithEmailAndPassword, updateProfile, signInWithPopup } from "firebase/auth"
+import { createUserWithEmailAndPassword, updateProfile, signInWithPopup, GoogleAuthProvider } from "firebase/auth"
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"
-import { auth, db, googleProvider } from "@/lib/firebase/firebase"
+import { auth, db } from "@/lib/firebase/firebase"
 import { useToast } from "@/hooks/use-toast"
 
 import { Button } from "@/components/ui/button"
@@ -77,7 +77,8 @@ export default function SignupPage() {
 
     const handleGoogleSignUp = async () => {
         try {
-            const result = await signInWithPopup(auth, googleProvider);
+            const provider = new GoogleAuthProvider();
+            const result = await signInWithPopup(auth, provider);
             const user = result.user;
 
             const userDocRef = doc(db, "users", user.uid);

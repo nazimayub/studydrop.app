@@ -1,35 +1,33 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Users can read public profile data, but only write to their own document.
+
+    // Users can be read by anyone (for profile pages), but only the user themselves can update their profile.
     match /users/{userId} {
       allow read;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth.uid == userId;
     }
 
-    // Notes can be read if public. Only the author can create, update, or delete their own notes.
+    // Public notes can be read by anyone.
+    // Notes can only be created, updated, or deleted by their author.
     match /notes/{noteId} {
       allow read: if resource.data.isPublic == true;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.authorId;
-      allow update, delete: if request.auth != null && resource.data.authorId == request.auth.uid;
+      allow create: if request.auth.uid == request.resource.data.authorId;
+      allow update, delete: if request.auth.uid == resource.data.authorId;
     }
 
-    // Questions can be read by anyone. Authenticated users can create questions.
-    // The author can update their question. Answers have their own rules.
+    // Questions and their answers can be read by anyone.
+    // Only authenticated users can create questions and answers.
+    // Only the author can update their own question or answer.
     match /questions/{questionId} {
       allow read;
       allow create: if request.auth != null;
-      allow update: if request.auth != null && resource.data.authorId == request.auth.uid;
-      
-      // Answers can be read by anyone. Authenticated users can post answers.
-      // The author of the answer can update their own answer.
+      allow update: if request.auth.uid == resource.data.authorId;
+
       match /answers/{answerId} {
         allow read;
         allow create: if request.auth != null;
-        allow update: if request.auth != null && resource.data.authorId == request.auth.uid;
+        allow update: if request.auth.uid == resource.data.authorId;
       }
     }
   }

@@ -94,9 +94,9 @@ export default function SignupPage() {
                     firstName,
                     lastName,
                     email: user.email,
+                    photoURL: user.photoURL,
                     points: 0,
                     bio: "",
-                    photoURL: user.photoURL || "",
                     createdAt: serverTimestamp()
                 });
             }

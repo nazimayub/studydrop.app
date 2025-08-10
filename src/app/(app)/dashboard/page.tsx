@@ -57,7 +57,7 @@ interface RecentActivity {
     title: string;
     author: string;
     authorId?: string;
-    date: any;
+    date: Date;
 }
 
 export default function Dashboard() {
@@ -67,36 +67,44 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchAllActivity = async () => {
+        // Helper function to safely convert Firestore timestamps or ISO strings to Date objects
+        const toDate = (firebaseDate: any): Date => {
+            if (!firebaseDate) return new Date();
+            if (firebaseDate.toDate) return firebaseDate.toDate();
+            if (typeof firebaseDate === 'string') return new Date(firebaseDate);
+            return new Date();
+        };
+
         // Fetch recent notes from all users
         const notesCollection = collection(db, "notes");
         const recentNotesQuery = query(notesCollection, orderBy("date", "desc"), limit(10));
-        const recentNotes = (await getDocs(recentNotesQuery)).docs.map(doc => ({
+        const recentNotesSnapshot = await getDocs(recentNotesQuery);
+        const recentNotes = recentNotesSnapshot.docs.map(doc => ({
             id: doc.id,
             type: 'Note' as const,
             title: doc.data().title,
             author: doc.data().authorName,
             authorId: doc.data().authorId,
-            date: doc.data().date
+            date: toDate(doc.data().date)
         }));
 
         // Fetch recent questions from all users
         const questionsCollection = collection(db, "questions");
         const recentQuestionsQuery = query(questionsCollection, orderBy("date", "desc"), limit(10));
-        const recentQuestions = (await getDocs(recentQuestionsQuery)).docs.map(doc => ({
+        const recentQuestionsSnapshot = await getDocs(recentQuestionsQuery);
+        const recentQuestions = recentQuestionsSnapshot.docs.map(doc => ({
             id: doc.id,
             type: 'Question' as const,
             title: doc.data().title,
             author: doc.data().author,
             authorId: doc.data().authorId,
-            date: doc.data().date?.toDate() || new Date(doc.data().date)
+            date: toDate(doc.data().date)
         }));
 
         // Combine and sort activities
-        const combinedActivity = [...recentNotes, ...recentQuestions].sort((a, b) => {
-            const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
-            const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
-            return dateB.getTime() - dateA.getTime();
-        }).slice(0, 10);
+        const combinedActivity = [...recentNotes, ...recentQuestions]
+            .sort((a, b) => b.date.getTime() - a.date.getTime())
+            .slice(0, 10);
         
         setRecentActivity(combinedActivity);
     };
@@ -238,7 +246,7 @@ export default function Dashboard() {
                             {activity.type}
                         </Badge>
                         </TableCell>
-                        <TableCell className="text-right">{new Date(activity.date).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-right">{activity.date.toLocaleDateString()}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

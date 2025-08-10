@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { useToast } from "@/hooks/use-toast";
-import { suggestTags } from "@/ai/flows/suggest-tags-flow";
 import { cn } from "@/lib/utils";
 import { apCourses } from "@/lib/ap-courses";
 
@@ -17,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Tag {
@@ -35,7 +34,6 @@ export default function NewNotePage() {
     const [selectedUnit, setSelectedUnit] = useState("");
 
 
-    const [isSuggesting, setIsSuggesting] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
     const [user] = useAuthState(auth);
@@ -64,42 +62,6 @@ export default function NewNotePage() {
     const handleRemoveTag = (tagToRemove: Tag) => {
         setTags(tags.filter(tag => !(tag.class === tagToRemove.class && tag.topic === tagToRemove.topic)));
     };
-
-    const handleSuggestTags = async () => {
-        if (!title || !content) {
-            toast({
-                variant: "destructive",
-                title: "Content needed",
-                description: "Please provide a title and content before suggesting tags.",
-            });
-            return;
-        }
-        if (!selectedClass) {
-            toast({
-                variant: "destructive",
-                title: "Select a class",
-                description: "Please select an AP Class to assign the suggested topics to.",
-            });
-            return;
-        }
-        setIsSuggesting(true);
-        try {
-            const result = await suggestTags({ noteTitle: title, noteContent: content });
-            if (result.tags) {
-                const suggestedTopics = result.tags;
-                const newTags = suggestedTopics.map(topic => ({ class: selectedClass, topic }));
-                setTags(prevTags => {
-                    const uniqueNewTags = newTags.filter(nt => !prevTags.some(pt => pt.class === nt.class && pt.topic === nt.topic));
-                    return [...prevTags, ...uniqueNewTags];
-                });
-            }
-        } catch (error) {
-            console.error("Error suggesting tags:", error);
-            toast({ variant: "destructive", title: "AI Error", description: "Could not suggest tags." });
-        }
-        setIsSuggesting(false);
-    };
-
 
     const handleCreateNote = async () => {
         if (!user) {
@@ -205,10 +167,6 @@ export default function NewNotePage() {
                      <div className="grid gap-2">
                         <Label htmlFor="content">Content</Label>
                         <Textarea id="content" placeholder="Write your note here..." rows={10} value={content} onChange={(e) => setContent(e.target.value)} />
-                         <Button variant="outline" onClick={handleSuggestTags} disabled={isSuggesting} className="mt-2 self-start">
-                            <Sparkles className="mr-2 h-4 w-4"/>
-                            {isSuggesting ? 'Suggesting Topics...' : 'Suggest Topics with AI'}
-                        </Button>
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end">

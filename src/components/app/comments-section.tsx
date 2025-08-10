@@ -53,27 +53,33 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
     const collectionName = contentType === 'note' ? 'notes' : 'questions';
     const commentsCollectionRef = collection(db, collectionName, contentId, "comments");
 
-    useEffect(() => {
+    const fetchComments = () => {
         const commentsQuery = query(commentsCollectionRef, orderBy("date", "desc"));
-        const unsubscribe = onSnapshot(commentsQuery, (querySnapshot) => {
+        const unsubscribe = onSnapshot(commentsQuery, async (querySnapshot) => {
             const commentsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comment));
             setComments(commentsList);
-
+    
             if (user) {
-                const newUserVotes: UserVoteState = {};
-                const fetchVotes = async () => {
-                    for (const comment of commentsList) {
+                const votes = await Promise.all(
+                    commentsList.map(async (comment) => {
                         const voteDocRef = doc(db, "users", user.uid, "votes", `comment-${comment.id}`);
                         const voteDoc = await getDoc(voteDocRef);
-                        if (voteDoc.exists()) {
-                            newUserVotes[comment.id] = voteDoc.data().type;
-                        }
-                    }
-                    setUserVotes(newUserVotes);
-                };
-                fetchVotes();
+                        return { commentId: comment.id, vote: voteDoc.exists() ? voteDoc.data().type : null };
+                    })
+                );
+                const newUserVotes = votes.reduce((acc, { commentId, vote }) => {
+                    acc[commentId] = vote;
+                    return acc;
+                }, {} as UserVoteState);
+                setUserVotes(newUserVotes);
             }
         });
+        return unsubscribe;
+    };
+    
+
+    useEffect(() => {
+        const unsubscribe = fetchComments();
         return () => unsubscribe();
     }, [contentId, collectionName, user]);
     
@@ -117,10 +123,8 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
             const authorAvatar = user.photoURL || userDocSnap.data()?.photoURL || "";
             const authorFallback = (user.displayName?.charAt(0) || userDocSnap.data()?.firstName?.charAt(0) || '') + (user.displayName?.split(' ')[1]?.charAt(0) || userDocSnap.data()?.lastName?.charAt(0) || '');
 
-            const batch = writeBatch(db);
-            const newCommentRef = doc(commentsCollectionRef);
-
-            batch.set(newCommentRef, {
+            
+            await addDoc(commentsCollectionRef, {
                 authorId: user.uid,
                 authorName,
                 authorAvatar,
@@ -131,10 +135,10 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
                 downvotes: 0,
             });
 
-            const userRef = doc(db, "users", user.uid);
-            batch.update(userRef, { points: increment(10) });
+            await updateDoc(doc(db, "users", user.uid), {
+                points: increment(10)
+            });
 
-            await batch.commit();
             setNewComment("");
 
         } catch (error) {
@@ -145,7 +149,7 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
         }
     };
     
-     const handleVote = async (commentId: string, voteType: 'upvote' | 'downvote', authorId: string) => {
+     const handleVote = async (commentId: string, voteType: 'up' | 'down', authorId: string) => {
         if (!user) {
             toast({ variant: "destructive", title: "Login Required" });
             return;
@@ -173,41 +177,38 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
                 let pointsChange = 0;
                 
                 const previousVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
+                const newVoteState = previousVote === voteType ? null : voteType;
 
-                if (previousVote === voteType) { // Undoing vote
-                    if (voteType === 'upvote') {
-                         newUpvotes -= 1;
-                         pointsChange = -2;
+                if (previousVote) {
+                    if (previousVote === 'up') {
+                        newUpvotes--;
+                        pointsChange -= 2;
                     } else {
-                        newDownvotes -= 1;
+                        newDownvotes--;
                     }
-                    transaction.delete(userVoteRef);
-                    setUserVotes(prev => ({ ...prev, [commentId]: null }));
-
-                } else { // New vote or changing vote
-                    if (previousVote === 'upvote') {
-                        newUpvotes -= 1;
-                        pointsChange = -2;
-                    }
-                    if (previousVote === 'downvote') {
-                        newDownvotes -= 1;
-                    }
-
-                    if (voteType === 'upvote') {
-                        newUpvotes += 1;
+                }
+                if (newVoteState) {
+                    if (newVoteState === 'up') {
+                        newUpvotes++;
                         pointsChange += 2;
                     } else {
-                        newDownvotes += 1;
+                        newDownvotes++;
                     }
-                    transaction.set(userVoteRef, { type: voteType });
-                    setUserVotes(prev => ({ ...prev, [commentId]: voteType }));
                 }
 
                 transaction.update(commentRef, { upvotes: newUpvotes, downvotes: newDownvotes });
+
+                if (newVoteState) {
+                    transaction.set(userVoteRef, { type: newVoteState });
+                } else {
+                    transaction.delete(userVoteRef);
+                }
+                
                 if (pointsChange !== 0 && authorId) {
                     transaction.update(authorRef, { points: increment(pointsChange) });
                 }
              });
+             // No need to call fetchComments here, onSnapshot will do it.
         } catch (error) {
             console.error(`Error ${voteType}ing comment:`, error);
             toast({ variant: "destructive", title: "Error", description: "Your vote could not be recorded." });
@@ -273,8 +274,8 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
                            <VoteButtons
                                 upvotes={comment.upvotes}
                                 downvotes={comment.downvotes}
-                                onUpvote={() => handleVote(comment.id, 'upvote', comment.authorId)}
-                                onDownvote={() => handleVote(comment.id, 'downvote', comment.authorId)}
+                                onUpvote={() => handleVote(comment.id, 'up', comment.authorId)}
+                                onDownvote={() => handleVote(comment.id, 'down', comment.authorId)}
                                 userVote={userVotes[comment.id]}
                            />
                         </CardFooter>

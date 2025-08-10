@@ -125,7 +125,7 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
     }
   }
   
-  const handleVote = async (voteType: 'upvote' | 'downvote') => {
+  const handleVote = async (voteType: 'up' | 'down') => {
         if (!user) {
             toast({ variant: "destructive", title: "Login Required" });
             return;
@@ -141,45 +141,41 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
 
         try {
             await runTransaction(db, async (transaction) => {
-                const noteDoc = await transaction.get(noteRef);
                 const userVoteDoc = await transaction.get(userVoteRef);
-
-                if (!noteDoc.exists()) {
-                    throw "Note does not exist!";
-                }
-
-                let newUpvotes = noteDoc.data().upvotes || 0;
-                let newDownvotes = noteDoc.data().downvotes || 0;
-                let pointsChange = 0;
-
                 const previousVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
 
-                if (previousVote === voteType) { // Undoing a vote
-                    if (voteType === 'upvote') {
+                let newUpvotes = note?.upvotes || 0;
+                let newDownvotes = note?.downvotes || 0;
+                let pointsChange = 0;
+
+                // Scenario 1: User is casting a new vote or changing their vote
+                if (previousVote !== voteType) {
+                    // If changing vote, undo the previous vote first
+                    if (previousVote === 'up') {
                         newUpvotes -= 1;
-                        pointsChange = -2;
-                    } else {
-                        newDownvotes -= 1;
-                    }
-                    transaction.delete(userVoteRef);
-                    setUserVote(null);
-                } else { // New vote or changing vote
-                    if (previousVote === 'upvote') {
-                        newUpvotes -= 1;
-                        pointsChange = -2;
-                    }
-                    if (previousVote === 'downvote') {
+                        pointsChange -= 2;
+                    } else if (previousVote === 'down') {
                         newDownvotes -= 1;
                     }
 
-                    if (voteType === 'upvote') {
+                    // Apply the new vote
+                    if (voteType === 'up') {
                         newUpvotes += 1;
                         pointsChange += 2;
                     } else {
                         newDownvotes += 1;
                     }
                     transaction.set(userVoteRef, { type: voteType });
-                    setUserVote(voteType);
+                } 
+                // Scenario 2: User is undoing their vote
+                else {
+                    if (voteType === 'up') {
+                        newUpvotes -= 1;
+                        pointsChange -= 2;
+                    } else {
+                        newDownvotes -= 1;
+                    }
+                    transaction.delete(userVoteRef);
                 }
                 
                 transaction.update(noteRef, { upvotes: newUpvotes, downvotes: newDownvotes });
@@ -187,11 +183,11 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
                     transaction.update(authorRef, { points: increment(pointsChange) });
                 }
             });
-
-            await fetchNote(); // Refetch to get the final state
+            await fetchNote();
         } catch (error) {
             console.error(`Error ${voteType}ing note:`, error);
             toast({ variant: "destructive", title: "Error", description: "Your vote could not be recorded." });
+            await fetchNote(); // Fetch note to revert optimistic UI updates on error
         }
     };
 
@@ -341,8 +337,8 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
              <VoteButtons
                 upvotes={note.upvotes || 0}
                 downvotes={note.downvotes || 0}
-                onUpvote={() => handleVote('upvote')}
-                onDownvote={() => handleVote('downvote')}
+                onUpvote={() => handleVote('up')}
+                onDownvote={() => handleVote('down')}
                 userVote={userVote}
              />
         </CardFooter>

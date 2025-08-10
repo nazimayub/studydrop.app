@@ -51,6 +51,11 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+interface NoteTag {
+  class: string;
+  topic: string;
+}
+
 interface RecentActivity {
     id: string;
     type: 'Note' | 'Question';
@@ -58,6 +63,7 @@ interface RecentActivity {
     author: string;
     authorId?: string;
     date: Date;
+    tags?: NoteTag[] | string[];
 }
 
 export default function Dashboard() {
@@ -70,7 +76,10 @@ export default function Dashboard() {
         const toDate = (firebaseDate: any): Date => {
             if (!firebaseDate) return new Date();
             if (firebaseDate.toDate) return firebaseDate.toDate();
+            // Handle ISO string dates
             if (typeof firebaseDate === 'string') return new Date(firebaseDate);
+            // Handle Firestore Timestamp seconds/nanoseconds
+            if (firebaseDate.seconds) return new Date(firebaseDate.seconds * 1000);
             return new Date();
         };
 
@@ -83,7 +92,8 @@ export default function Dashboard() {
             title: doc.data().title,
             author: doc.data().authorName,
             authorId: doc.data().authorId,
-            date: toDate(doc.data().date)
+            date: toDate(doc.data().date),
+            tags: doc.data().tags || [],
         }));
 
         const questionsCollection = collection(db, "questions");
@@ -95,7 +105,8 @@ export default function Dashboard() {
             title: doc.data().title,
             author: doc.data().author,
             authorId: doc.data().authorId,
-            date: toDate(doc.data().date)
+            date: toDate(doc.data().date),
+            tags: doc.data().tags || [],
         }));
 
         const combinedActivity = [...recentNotes, ...recentQuestions]
@@ -214,6 +225,7 @@ export default function Dashboard() {
                   <TableRow>
                     <TableHead>User</TableHead>
                     <TableHead>Activity</TableHead>
+                    <TableHead>Tags</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Date</TableHead>
                   </TableRow>
@@ -232,6 +244,15 @@ export default function Dashboard() {
                              <Link href={activity.type === 'Note' ? `/notes/${activity.id}` : `/forum/${activity.id}`} className="hidden text-sm text-muted-foreground md:inline hover:underline">
                                 {activity.title}
                             </Link>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {activity.tags?.map((tag, index) => (
+                              <Badge key={index} variant="secondary">
+                                {typeof tag === 'string' ? tag : `${tag.class}: ${tag.topic}`}
+                              </Badge>
+                            ))}
+                          </div>
                         </TableCell>
                         <TableCell>
                         <Badge className="text-xs" variant="outline">

@@ -1,33 +1,73 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+  
+    // Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
 
-    // Users can be read by anyone (for profile pages), but only the user themselves can update their profile.
+    // Users
+    // Allow users to read any profile
+    // Allow users to create their own profile on signup
+    // Allow users to update their own profile data
     match /users/{userId} {
       allow read;
-      allow write: if request.auth.uid == userId;
+      allow create: if isSignedIn();
+      allow update: if isOwner(userId);
+
+      // Votes
+      // Allow users to manage their own votes subcollection
+      match /votes/{voteId} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
-    // Public notes can be read by anyone.
-    // Notes can only be created, updated, or deleted by their author.
+    // Notes
+    // Allow anyone to read public notes
+    // Allow signed-in users to create notes
+    // Allow owners to update/delete their own notes
     match /notes/{noteId} {
       allow read: if resource.data.isPublic == true;
-      allow create: if request.auth.uid == request.resource.data.authorId;
-      allow update, delete: if request.auth.uid == resource.data.authorId;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && isOwner(resource.data.authorId);
+
+      // Comments
+      // Allow anyone to read comments on public notes
+      // Allow signed-in users to create/delete their own comments
+      match /comments/{commentId} {
+        allow read: if get(/databases/$(database)/documents/notes/$(noteId)).data.isPublic == true;
+        allow create: if isSignedIn();
+        allow delete: if isSignedIn() && isOwner(resource.data.authorId);
+        // Allow updates only for voting
+        allow update: if isSignedIn();
+      }
     }
 
-    // Questions and their answers can be read by anyone.
-    // Only authenticated users can create questions and answers.
-    // Only the author can update their own question or answer.
+    // Questions
+    // Allow anyone to read questions
+    // Allow signed-in users to create questions
+    // Allow owners to update/delete their questions
     match /questions/{questionId} {
       allow read;
-      allow create: if request.auth != null;
-      allow update: if request.auth.uid == resource.data.authorId;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && isOwner(resource.data.authorId);
 
+      // Answers
+      // Allow anyone to read answers
+      // Allow signed-in users to create/delete their own answers
       match /answers/{answerId} {
         allow read;
-        allow create: if request.auth != null;
-        allow update: if request.auth.uid == resource.data.authorId;
+        allow create: if isSignedIn();
+        allow delete: if isSignedIn() && isOwner(resource.data.authorId);
+        // Allow updates for voting and acceptance
+        allow update: if isSignedIn();
       }
     }
   }

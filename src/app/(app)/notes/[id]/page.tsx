@@ -126,70 +126,74 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
   }
   
   const handleVote = async (voteType: 'up' | 'down') => {
-        if (!user) {
-            toast({ variant: "destructive", title: "Login Required" });
-            return;
-        }
-        if (user.uid === note?.authorId) {
-             toast({ variant: "destructive", description: "You cannot vote on your own note." });
-            return;
-        }
+    if (!user) {
+        toast({ variant: "destructive", title: "Login Required" });
+        return;
+    }
+    if (!note || user.uid === note.authorId) {
+        toast({ variant: "destructive", description: "You cannot vote on your own note." });
+        return;
+    }
 
-        const noteRef = doc(db, "notes", id);
-        const userVoteRef = doc(db, "users", user.uid, "votes", `note-${id}`);
-        const authorRef = doc(db, "users", note!.authorId);
+    const noteRef = doc(db, "notes", id);
+    const userVoteRef = doc(db, "users", user.uid, "votes", `note-${id}`);
+    const authorRef = doc(db, "users", note.authorId);
 
-        try {
-            await runTransaction(db, async (transaction) => {
-                const userVoteDoc = await transaction.get(userVoteRef);
-                const previousVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
+    try {
+        await runTransaction(db, async (transaction) => {
+            const userVoteDoc = await transaction.get(userVoteRef);
+            const noteDoc = await transaction.get(noteRef);
 
-                let newUpvotes = note?.upvotes || 0;
-                let newDownvotes = note?.downvotes || 0;
-                let pointsChange = 0;
+            if (!noteDoc.exists()) {
+                throw "Note does not exist!";
+            }
 
-                // Scenario 1: User is casting a new vote or changing their vote
-                if (previousVote !== voteType) {
-                    // If changing vote, undo the previous vote first
-                    if (previousVote === 'up') {
-                        newUpvotes -= 1;
-                        pointsChange -= 2;
-                    } else if (previousVote === 'down') {
-                        newDownvotes -= 1;
-                    }
+            const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
+            let noteUpdate: any = {};
+            let pointsChange = 0;
 
-                    // Apply the new vote
-                    if (voteType === 'up') {
-                        newUpvotes += 1;
-                        pointsChange += 2;
-                    } else {
-                        newDownvotes += 1;
-                    }
-                    transaction.set(userVoteRef, { type: voteType });
-                } 
-                // Scenario 2: User is undoing their vote
-                else {
-                    if (voteType === 'up') {
-                        newUpvotes -= 1;
-                        pointsChange -= 2;
-                    } else {
-                        newDownvotes -= 1;
-                    }
-                    transaction.delete(userVoteRef);
+            if (currentVote === voteType) {
+                // Undoing vote
+                transaction.delete(userVoteRef);
+                if (voteType === 'up') {
+                    noteUpdate.upvotes = increment(-1);
+                    pointsChange = -2;
+                } else {
+                    noteUpdate.downvotes = increment(-1);
                 }
-                
-                transaction.update(noteRef, { upvotes: newUpvotes, downvotes: newDownvotes });
-                if (pointsChange !== 0 && note?.authorId) {
-                    transaction.update(authorRef, { points: increment(pointsChange) });
+                setUserVote(null); // Optimistic update
+            } else {
+                // New vote or changing vote
+                transaction.set(userVoteRef, { type: voteType });
+                if (currentVote === 'up') {
+                    noteUpdate.upvotes = increment(-1);
+                    pointsChange = -2;
+                } else if (currentVote === 'down') {
+                    noteUpdate.downvotes = increment(-1);
                 }
-            });
-            await fetchNote();
-        } catch (error) {
-            console.error(`Error ${voteType}ing note:`, error);
-            toast({ variant: "destructive", title: "Error", description: "Your vote could not be recorded." });
-            await fetchNote(); // Fetch note to revert optimistic UI updates on error
-        }
-    };
+
+                if (voteType === 'up') {
+                    noteUpdate.upvotes = increment(1);
+                    pointsChange += 2;
+                } else {
+                    noteUpdate.downvotes = increment(1);
+                }
+                 setUserVote(voteType); // Optimistic update
+            }
+            
+            transaction.update(noteRef, noteUpdate);
+            if (pointsChange !== 0) {
+                transaction.update(authorRef, { points: increment(pointsChange) });
+            }
+        });
+
+        await fetchNote(); // Re-fetch to get the final state from the server
+    } catch (error) {
+        console.error(`Error ${voteType}ing note:`, error);
+        toast({ variant: "destructive", title: "Error", description: "Your vote could not be recorded." });
+        await fetchNote(); // Fetch note to revert optimistic UI updates on error
+    }
+};
 
 
   if (!note) {

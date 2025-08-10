@@ -149,65 +149,65 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
         }
     };
     
-     const handleVote = async (commentId: string, voteType: 'up' | 'down', authorId: string) => {
+    const handleVote = async (commentId: string, voteType: 'up' | 'down', authorId: string) => {
         if (!user) {
             toast({ variant: "destructive", title: "Login Required" });
             return;
         }
-         if (user.uid === authorId) {
-             toast({ variant: "destructive", description: "You cannot vote on your own comment." });
-             return;
-         }
-        
+        if (user.uid === authorId) {
+            toast({ variant: "destructive", description: "You cannot vote on your own comment." });
+            return;
+        }
+
         const commentRef = doc(commentsCollectionRef, commentId);
         const userVoteRef = doc(db, "users", user.uid, "votes", `comment-${commentId}`);
         const authorRef = doc(db, "users", authorId);
 
         try {
-             await runTransaction(db, async (transaction) => {
-                const commentDoc = await transaction.get(commentRef);
+            await runTransaction(db, async (transaction) => {
                 const userVoteDoc = await transaction.get(userVoteRef);
-                
+                const commentDoc = await transaction.get(commentRef);
+
                 if (!commentDoc.exists()) {
                     throw "Comment does not exist!";
                 }
 
-                let newUpvotes = commentDoc.data().upvotes || 0;
-                let newDownvotes = commentDoc.data().downvotes || 0;
+                const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
+                let commentUpdate: any = {};
                 let pointsChange = 0;
-                
-                const previousVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
-                const newVoteState = previousVote === voteType ? null : voteType;
 
-                if (previousVote) {
-                    if (previousVote === 'up') {
-                        newUpvotes--;
-                        pointsChange -= 2;
+                if (currentVote === voteType) {
+                    // Undoing vote
+                    transaction.delete(userVoteRef);
+                    if (voteType === 'up') {
+                        commentUpdate.upvotes = increment(-1);
+                        pointsChange = -2;
                     } else {
-                        newDownvotes--;
+                        commentUpdate.downvotes = increment(-1);
                     }
-                }
-                if (newVoteState) {
-                    if (newVoteState === 'up') {
-                        newUpvotes++;
+                } else {
+                    // New vote or changing vote
+                    transaction.set(userVoteRef, { type: voteType });
+                    if (currentVote === 'up') {
+                        commentUpdate.upvotes = increment(-1);
+                        pointsChange = -2;
+                    } else if (currentVote === 'down') {
+                        commentUpdate.downvotes = increment(-1);
+                    }
+
+                    if (voteType === 'up') {
+                        commentUpdate.upvotes = increment(1);
                         pointsChange += 2;
                     } else {
-                        newDownvotes++;
+                        commentUpdate.downvotes = increment(1);
                     }
                 }
-
-                transaction.update(commentRef, { upvotes: newUpvotes, downvotes: newDownvotes });
-
-                if (newVoteState) {
-                    transaction.set(userVoteRef, { type: newVoteState });
-                } else {
-                    transaction.delete(userVoteRef);
-                }
                 
-                if (pointsChange !== 0 && authorId) {
+                transaction.update(commentRef, commentUpdate);
+                if (pointsChange !== 0) {
                     transaction.update(authorRef, { points: increment(pointsChange) });
                 }
-             });
+            });
              // No need to call fetchComments here, onSnapshot will do it.
         } catch (error) {
             console.error(`Error ${voteType}ing comment:`, error);

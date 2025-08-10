@@ -2,8 +2,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { doc, getDoc } from "firebase/firestore"
-import { db } from "@/lib/firebase/firebase"
+import { doc, getDoc, updateDoc, increment } from "firebase/firestore"
+import { db, auth } from "@/lib/firebase/firebase"
+import { useAuthState } from "react-firebase-hooks/auth"
 import { summarizeNote, type SummarizeNoteOutput } from "@/ai/flows/summarize-note-flow"
 import { generateFlashcards, type Flashcard } from "@/ai/flows/generate-flashcards-flow"
 import Link from "next/link"
@@ -14,6 +15,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Bot, Sparkles, List, Copy, ChevronsUpDown, Check, Tag } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { VoteButtons } from "@/components/app/vote-buttons"
+import { CommentsSection } from "@/components/app/comments-section"
+import { useToast } from "@/hooks/use-toast"
 
 interface NoteTag {
     class: string;
@@ -28,10 +32,13 @@ interface Note {
   authorId: string;
   authorName: string;
   tags?: NoteTag[];
+  upvotes?: number;
+  downvotes?: number;
 }
 
 export default function NoteDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
+  const [user] = useAuthState(auth);
   const [note, setNote] = useState<Note | null>(null);
   const [summary, setSummary] = useState<SummarizeNoteOutput | null>(null);
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
@@ -41,16 +48,17 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
   const [showFlashcardsDialog, setShowFlashcardsDialog] = useState(false);
   const [currentFlashcardIndex, setCurrentFlashcardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  const { toast } = useToast();
+
+  const fetchNote = async () => {
+    const noteDoc = doc(db, "notes", id);
+    const noteSnapshot = await getDoc(noteDoc);
+    if (noteSnapshot.exists()) {
+      setNote(noteSnapshot.data() as Note);
+    }
+  };
 
   useEffect(() => {
-    const fetchNote = async () => {
-      const noteDoc = doc(db, "notes", id);
-      const noteSnapshot = await getDoc(noteDoc);
-      if (noteSnapshot.exists()) {
-        setNote(noteSnapshot.data() as Note);
-      }
-    };
-
     if (id) {
       fetchNote();
     }
@@ -60,7 +68,7 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
     if (!note) return;
     setIsSummarizing(true);
     setShowSummaryDialog(true);
-    setSummary(null); // Clear previous summary
+    setSummary(null);
     try {
       const noteSummary = await summarizeNote({ noteContent: note.content });
       setSummary(noteSummary);
@@ -99,6 +107,42 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
         setIsFlipped(false);
     }
   }
+  
+  const handleVote = async (voteType: 'upvote' | 'downvote') => {
+        if (!user) {
+            toast({
+                variant: "destructive",
+                title: "Login Required",
+                description: "You must be logged in to vote.",
+            });
+            return;
+        }
+        if (user.uid === note?.authorId) {
+             toast({
+                variant: "destructive",
+                description: "You cannot vote on your own note.",
+            });
+            return;
+        }
+
+        try {
+            const noteRef = doc(db, "notes", id);
+            const fieldToIncrement = voteType === 'upvote' ? 'upvotes' : 'downvotes';
+            await updateDoc(noteRef, {
+                [fieldToIncrement]: increment(1)
+            });
+
+            if (note?.authorId && voteType === 'upvote') {
+                const authorRef = doc(db, "users", note.authorId);
+                await updateDoc(authorRef, {
+                    points: increment(2) 
+                });
+            }
+            fetchNote();
+        } catch (error) {
+            console.error(`Error ${voteType}ing note:`, error);
+        }
+    };
 
 
   if (!note) {
@@ -120,7 +164,7 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
     <div className="grid gap-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between gap-4">
             <div>
               <CardTitle className="font-headline text-3xl">{note.title}</CardTitle>
               <CardDescription>
@@ -132,12 +176,12 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
                 )}
               </CardDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
                  <Dialog open={showSummaryDialog} onOpenChange={setShowSummaryDialog}>
                     <DialogTrigger asChild>
                         <Button onClick={handleSummarize} disabled={isSummarizing}>
                             <Bot className="mr-2 h-4 w-4" />
-                            {isSummarizing ? "Summarizing..." : "Summarize with AI"}
+                            {isSummarizing ? "Summarizing..." : "Summarize"}
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-lg">
@@ -180,7 +224,7 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
                     <DialogTrigger asChild>
                         <Button variant="outline" onClick={handleGenerateFlashcards} disabled={isGeneratingFlashcards}>
                             <Copy className="mr-2 h-4 w-4" />
-                            {isGeneratingFlashcards ? "Generating..." : "Generate Flashcards"}
+                            {isGeneratingFlashcards ? "Generating..." : "Flashcards"}
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-xl">
@@ -242,9 +286,18 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
             <p style={{ whiteSpace: 'pre-line' }}>{note.content}</p>
           </div>
         </CardContent>
+         <CardFooter className="flex justify-end">
+             <VoteButtons
+                upvotes={note.upvotes || 0}
+                downvotes={note.downvotes || 0}
+                onUpvote={() => handleVote('upvote')}
+                onDownvote={() => handleVote('downvote')}
+                userVote={null} // Implement user vote tracking if needed
+             />
+        </CardFooter>
       </Card>
+      
+      <CommentsSection contentId={id} contentType="note" contentAuthorId={note.authorId} />
     </div>
   )
 }
-
-    

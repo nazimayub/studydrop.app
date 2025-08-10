@@ -9,15 +9,15 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { useToast } from "@/hooks/use-toast";
 import { suggestTags } from "@/ai/flows/suggest-tags-flow";
 import { cn } from "@/lib/utils";
+import { apCourses } from "@/lib/ap-courses";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, ChevronsUpDown, Sparkles, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sparkles, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Tag {
@@ -30,11 +30,10 @@ export default function NewNotePage() {
     const [content, setContent] = useState("");
     const [tags, setTags] = useState<Tag[]>([]);
     
-    const [existingClasses, setExistingClasses] = useState<string[]>([]);
-    const [existingTopics, setExistingTopics] = useState<string[]>([]);
+    const [selectedClass, setSelectedClass] = useState("");
+    const [availableUnits, setAvailableUnits] = useState<string[]>([]);
+    const [selectedUnit, setSelectedUnit] = useState("");
 
-    const [currentClass, setCurrentClass] = useState("");
-    const [currentTopic, setCurrentTopic] = useState("");
 
     const [isSuggesting, setIsSuggesting] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -42,31 +41,23 @@ export default function NewNotePage() {
     const [user] = useAuthState(auth);
     const { toast } = useToast();
 
-     useEffect(() => {
-        const fetchTags = async () => {
-            const notesSnapshot = await getDocs(collection(db, "notes"));
-            const classes = new Set<string>();
-            const topics = new Set<string>();
-            notesSnapshot.forEach(doc => {
-                const noteTags = doc.data().tags as Tag[];
-                noteTags?.forEach(tag => {
-                    classes.add(tag.class);
-                    topics.add(tag.topic);
-                });
-            });
-            setExistingClasses(Array.from(classes));
-            setExistingTopics(Array.from(topics));
-        };
-        fetchTags();
-    }, []);
+    useEffect(() => {
+        if (selectedClass) {
+            const course = apCourses.find(c => c.name === selectedClass);
+            setAvailableUnits(course ? course.units : []);
+            setSelectedUnit(""); // Reset unit when class changes
+        } else {
+            setAvailableUnits([]);
+        }
+    }, [selectedClass]);
 
     const handleAddTag = () => {
-        if (currentClass && currentTopic) {
-            const newTag = { class: currentClass, topic: currentTopic };
+        if (selectedClass && selectedUnit) {
+            const newTag = { class: selectedClass, topic: selectedUnit };
             if (!tags.some(tag => tag.class === newTag.class && tag.topic === newTag.topic)) {
                 setTags([...tags, newTag]);
             }
-            setCurrentTopic("");
+            setSelectedUnit("");
         }
     };
 
@@ -75,32 +66,32 @@ export default function NewNotePage() {
     };
 
     const handleSuggestTags = async () => {
-        if (!content) {
+        if (!title || !content) {
             toast({
                 variant: "destructive",
                 title: "Content needed",
-                description: "Please write some content in your note before suggesting tags.",
+                description: "Please provide a title and content before suggesting tags.",
+            });
+            return;
+        }
+        if (!selectedClass) {
+            toast({
+                variant: "destructive",
+                title: "Select a class",
+                description: "Please select an AP Class to assign the suggested topics to.",
             });
             return;
         }
         setIsSuggesting(true);
         try {
-            const result = await suggestTags({ noteContent: content });
+            const result = await suggestTags({ noteTitle: title, noteContent: content });
             if (result.tags) {
                 const suggestedTopics = result.tags;
-                 if (currentClass) {
-                    const newTags = suggestedTopics.map(topic => ({ class: currentClass, topic }));
-                    setTags(prevTags => {
-                        const uniqueNewTags = newTags.filter(nt => !prevTags.some(pt => pt.class === nt.class && pt.topic === nt.topic));
-                        return [...prevTags, ...uniqueNewTags];
-                    });
-                } else {
-                     toast({
-                        variant: "destructive",
-                        title: "Select a class",
-                        description: "Please select a class before suggesting topics.",
-                    });
-                }
+                const newTags = suggestedTopics.map(topic => ({ class: selectedClass, topic }));
+                setTags(prevTags => {
+                    const uniqueNewTags = newTags.filter(nt => !prevTags.some(pt => pt.class === nt.class && pt.topic === nt.topic));
+                    return [...prevTags, ...uniqueNewTags];
+                });
             }
         } catch (error) {
             console.error("Error suggesting tags:", error);
@@ -108,6 +99,7 @@ export default function NewNotePage() {
         }
         setIsSuggesting(false);
     };
+
 
     const handleCreateNote = async () => {
         if (!user) {
@@ -182,12 +174,30 @@ export default function NewNotePage() {
                         </div>
                         <div className="flex items-end gap-2">
                              <div className="grid gap-2 flex-1">
-                                <Label htmlFor="class-input" className="text-xs">Class</Label>
-                                <Input id="class-input" placeholder="e.g. History 101" value={currentClass} onChange={(e) => setCurrentClass(e.target.value)} />
+                                <Label htmlFor="class-select" className="text-xs">AP Class</Label>
+                                <Select value={selectedClass} onValueChange={setSelectedClass}>
+                                    <SelectTrigger id="class-select">
+                                        <SelectValue placeholder="Select an AP Class" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {apCourses.map(course => (
+                                            <SelectItem key={course.name} value={course.name}>{course.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="grid gap-2 flex-1">
-                                <Label htmlFor="topic-input" className="text-xs">Topic</Label>
-                                <Input id="topic-input" placeholder="e.g. World War II" value={currentTopic} onChange={(e) => setCurrentTopic(e.target.value)} />
+                                <Label htmlFor="unit-select" className="text-xs">Unit / Topic</Label>
+                                 <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedClass}>
+                                    <SelectTrigger id="unit-select">
+                                        <SelectValue placeholder="Select a Unit" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {availableUnits.map(unit => (
+                                            <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <Button variant="outline" onClick={handleAddTag}>Add Tag</Button>
                         </div>
@@ -197,7 +207,7 @@ export default function NewNotePage() {
                         <Textarea id="content" placeholder="Write your note here..." rows={10} value={content} onChange={(e) => setContent(e.target.value)} />
                          <Button variant="outline" onClick={handleSuggestTags} disabled={isSuggesting} className="mt-2 self-start">
                             <Sparkles className="mr-2 h-4 w-4"/>
-                            {isSuggesting ? 'Suggesting...' : 'Suggest Tags with AI'}
+                            {isSuggesting ? 'Suggesting Topics...' : 'Suggest Topics with AI'}
                         </Button>
                     </div>
                 </CardContent>

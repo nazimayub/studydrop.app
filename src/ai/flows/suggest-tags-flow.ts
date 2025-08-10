@@ -12,6 +12,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 
 const SuggestTagsInputSchema = z.object({
+  noteTitle: z.string().describe('The title of the note to generate tags from.'),
   noteContent: z.string().describe('The full text content of the note to generate tags from.'),
 });
 export type SuggestTagsInput = z.infer<typeof SuggestTagsInputSchema>;
@@ -27,7 +28,10 @@ const prompt = ai.definePrompt({
   name: 'suggestTagsPrompt',
   input: {schema: SuggestTagsInputSchema},
   output: {schema: SuggestTagsOutputSchema},
-  prompt: `You are an expert at analyzing text and suggesting relevant tags. Analyze the following note content and suggest a list of 5-7 relevant topics or keywords that could be used as tags.
+  prompt: `You are an expert at analyzing text and suggesting relevant tags. Analyze the following note title and content, then suggest a list of 5-7 relevant topics or keywords that could be used as tags.
+
+Note Title:
+{{{noteTitle}}}
 
 Note Content:
 {{{noteContent}}}`,

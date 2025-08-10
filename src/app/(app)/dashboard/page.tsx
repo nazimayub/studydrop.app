@@ -67,7 +67,6 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchAllActivity = async () => {
-        // Helper function to safely convert Firestore timestamps or ISO strings to Date objects
         const toDate = (firebaseDate: any): Date => {
             if (!firebaseDate) return new Date();
             if (firebaseDate.toDate) return firebaseDate.toDate();
@@ -75,9 +74,8 @@ export default function Dashboard() {
             return new Date();
         };
 
-        // Fetch recent notes from all users
         const notesCollection = collection(db, "notes");
-        const recentNotesQuery = query(notesCollection, orderBy("date", "desc"), limit(10));
+        const recentNotesQuery = query(notesCollection, where("isPublic", "==", true), orderBy("date", "desc"), limit(10));
         const recentNotesSnapshot = await getDocs(recentNotesQuery);
         const recentNotes = recentNotesSnapshot.docs.map(doc => ({
             id: doc.id,
@@ -88,7 +86,6 @@ export default function Dashboard() {
             date: toDate(doc.data().date)
         }));
 
-        // Fetch recent questions from all users
         const questionsCollection = collection(db, "questions");
         const recentQuestionsQuery = query(questionsCollection, orderBy("date", "desc"), limit(10));
         const recentQuestionsSnapshot = await getDocs(recentQuestionsQuery);
@@ -101,7 +98,6 @@ export default function Dashboard() {
             date: toDate(doc.data().date)
         }));
 
-        // Combine and sort activities
         const combinedActivity = [...recentNotes, ...recentQuestions]
             .sort((a, b) => b.date.getTime() - a.date.getTime())
             .slice(0, 10);
@@ -112,22 +108,18 @@ export default function Dashboard() {
     const fetchUserStats = async () => {
         if (!user) return;
         
-        // Fetch user-specific notes
         const notesQuery = query(collection(db, "notes"), where("authorId", "==", user.uid));
         const notesSnapshot = await getDocs(notesQuery);
         const notesCount = notesSnapshot.size;
 
-        // Fetch user-specific questions
         const questionsQuery = query(collection(db, "questions"), where("authorId", "==", user.uid));
         const questionsSnapshot = await getDocs(questionsQuery);
         const questionsCount = questionsSnapshot.size;
 
-        // Fetch user-specific answers
         const answersQuery = query(collectionGroup(db, 'answers'), where("authorId", "==", user.uid));
         const answersSnapshot = await getDocs(answersQuery);
         const answersCount = answersSnapshot.size;
         
-        // Fetch user points
         let userPoints = 0;
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {

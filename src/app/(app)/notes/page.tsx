@@ -8,6 +8,7 @@ import {
   File,
   MoreHorizontal,
   PlusCircle,
+  X,
 } from "lucide-react"
 import { collection, getDocs, deleteDoc, doc, query, where, orderBy } from "firebase/firestore"
 import { useAuthState } from "react-firebase-hooks/auth"
@@ -48,6 +49,9 @@ import {
 } from "@/components/ui/alert-dialog"
 import { db, auth } from "@/lib/firebase/firebase"
 import { Badge } from "@/components/ui/badge"
+import { apCourses } from "@/lib/ap-courses"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 
 interface NoteTag {
   class: string;
@@ -69,21 +73,67 @@ interface Note {
 export default function NotesPage() {
     const [user] = useAuthState(auth);
     const [allNotes, setAllNotes] = useState<Note[]>([]);
+    const [filteredNotes, setFilteredNotes] = useState<Note[]>([]);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
     const router = useRouter();
 
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedClass, setSelectedClass] = useState("");
+    const [availableUnits, setAvailableUnits] = useState<string[]>([]);
+    const [selectedUnit, setSelectedUnit] = useState("");
+    const [activeFilters, setActiveFilters] = useState<NoteTag[]>([]);
+
     const fetchNotes = async () => {
-        // Fetch all public notes
         const notesQuery = query(collection(db, "notes"), where("isPublic", "==", true), orderBy("date", "desc"));
         const notesSnapshot = await getDocs(notesQuery);
         const notesList = notesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
         setAllNotes(notesList);
+        setFilteredNotes(notesList);
     };
 
     useEffect(() => {
         fetchNotes();
     }, []);
+
+    useEffect(() => {
+        let notes = allNotes;
+        if (searchTerm) {
+            notes = notes.filter(note => note.title.toLowerCase().includes(searchTerm.toLowerCase()));
+        }
+        if (activeFilters.length > 0) {
+            notes = notes.filter(note => 
+                activeFilters.every(filter => 
+                    note.tags?.some(tag => tag.class === filter.class && tag.topic === filter.topic)
+                )
+            );
+        }
+        setFilteredNotes(notes);
+    }, [searchTerm, activeFilters, allNotes]);
+
+     useEffect(() => {
+        if (selectedClass) {
+            const course = apCourses.find(c => c.name === selectedClass);
+            setAvailableUnits(course ? course.units : []);
+            setSelectedUnit("");
+        } else {
+            setAvailableUnits([]);
+        }
+    }, [selectedClass]);
+
+    const handleAddFilter = () => {
+        if (selectedClass && selectedUnit) {
+            const newFilter = { class: selectedClass, topic: selectedUnit };
+            if (!activeFilters.some(f => f.class === newFilter.class && f.topic === newFilter.topic)) {
+                setActiveFilters([...activeFilters, newFilter]);
+            }
+            setSelectedUnit("");
+        }
+    };
+
+    const handleRemoveFilter = (filterToRemove: NoteTag) => {
+        setActiveFilters(activeFilters.filter(f => !(f.class === filterToRemove.class && f.topic === filterToRemove.topic)));
+    };
 
 
     const handleDeleteClick = (noteId: string) => {
@@ -96,7 +146,7 @@ export default function NotesPage() {
             await deleteDoc(doc(db, "notes", noteToDelete));
             setNoteToDelete(null);
             setShowDeleteDialog(false);
-            fetchNotes(); // Refresh notes list
+            fetchNotes();
         }
     };
 
@@ -140,22 +190,52 @@ export default function NotesPage() {
           </Link>
         </div>
       </div>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-                <CardTitle>Community Notes</CardTitle>
-                <CardDescription>
-                A collection of all public notes.
-                </CardDescription>
-            </div>
-             <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => handleExport(allNotes)}>
-                <File className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                Export
-                </span>
-            </Button>
+       <Card>
+          <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex-1">
+                <Input placeholder="Search by note title..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              </div>
+              <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                    <Select value={selectedClass} onValueChange={setSelectedClass}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Filter by AP Class" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {apCourses.map(course => (
+                                <SelectItem key={course.name} value={course.name}>{course.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                     <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedClass}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Filter by Unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableUnits.map(unit => (
+                                <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Button onClick={handleAddFilter} disabled={!selectedUnit}>Add Filter</Button>
+                </div>
           </CardHeader>
-          <CardContent>
+           {activeFilters.length > 0 && (
+                <CardContent className="border-t pt-4">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium">Active filters:</span>
+                        {activeFilters.map(filter => (
+                            <Badge key={`${filter.class}-${filter.topic}`} variant="secondary">
+                                {filter.class}: {filter.topic}
+                                <button className="ml-1" onClick={() => handleRemoveFilter(filter)}>
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </Badge>
+                        ))}
+                        <Button variant="ghost" size="sm" onClick={() => setActiveFilters([])}>Clear all</Button>
+                    </div>
+                </CardContent>
+            )}
+          <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -171,7 +251,7 @@ export default function NotesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {allNotes.map((note) => (
+                {filteredNotes.map((note) => (
                     <TableRow key={note.id}>
                     <TableCell className="font-medium">
                         <Link href={`/notes/${note.id}`} className="hover:underline">{note.title}</Link>
@@ -220,7 +300,15 @@ export default function NotesPage() {
           </CardContent>
           <CardFooter>
             <div className="text-xs text-muted-foreground">
-              Showing <strong>{allNotes.length}</strong> public notes.
+              Showing <strong>{filteredNotes.length}</strong> of <strong>{allNotes.length}</strong> public notes.
+            </div>
+             <div className="ml-auto">
+                <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => handleExport(filteredNotes)}>
+                    <File className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Export Filtered
+                    </span>
+                </Button>
             </div>
           </CardFooter>
         </Card>

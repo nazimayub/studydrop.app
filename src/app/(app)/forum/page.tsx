@@ -6,14 +6,15 @@ import Link from "next/link";
 import { PlusCircle, MessageSquare, Eye, ThumbsUp, X } from "lucide-react";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
+import { apCourses } from "@/lib/ap-courses";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
 
@@ -35,26 +36,24 @@ export default function ForumPage() {
     const [allPosts, setAllPosts] = useState<ForumPost[]>([]);
     const [filteredPosts, setFilteredPosts] = useState<ForumPost[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
-    const [allTags, setAllTags] = useState<string[]>([]);
-    const [selectedTags, setSelectedTags] = useState<string[]>([]);
+    
     const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
+    const [selectedClass, setSelectedClass] = useState("");
+    const [availableUnits, setAvailableUnits] = useState<string[]>([]);
+    const [selectedUnit, setSelectedUnit] = useState("");
+    const [activeFilters, setActiveFilters] = useState<string[]>([]);
+
 
     useEffect(() => {
-        const fetchPostsAndTags = async () => {
+        const fetchPosts = async () => {
             const postsCollection = collection(db, "questions");
             const q = query(postsCollection, orderBy("date", "desc"));
             const postsSnapshot = await getDocs(q);
             const postsList = postsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ForumPost));
             setAllPosts(postsList);
-
-            const tagsSet = new Set<string>();
-            postsList.forEach(post => {
-                post.tags?.forEach(tag => tagsSet.add(tag));
-            });
-            setAllTags(Array.from(tagsSet).sort());
         };
 
-        fetchPostsAndTags();
+        fetchPosts();
     }, []);
 
     useEffect(() => {
@@ -62,18 +61,42 @@ export default function ForumPage() {
         if (searchTerm) {
             posts = posts.filter(post => post.title.toLowerCase().includes(searchTerm.toLowerCase()));
         }
-        if (selectedTags.length > 0) {
-            posts = posts.filter(post => selectedTags.every(tag => post.tags.includes(tag)));
+        if (activeFilters.length > 0) {
+            posts = posts.filter(post => 
+                activeFilters.every(filter => post.tags.some(tag => tag === filter || tag.startsWith(`${filter}:`)))
+            );
         }
         setFilteredPosts(posts);
-    }, [searchTerm, selectedTags, allPosts]);
-
-    const handleTagSelectionChange = (tag: string, checked: boolean | 'indeterminate') => {
-        if (checked) {
-            setSelectedTags(prev => [...prev, tag]);
+    }, [searchTerm, activeFilters, allPosts]);
+    
+     useEffect(() => {
+        if (selectedClass) {
+            const course = apCourses.find(c => c.name === selectedClass);
+            setAvailableUnits(course ? course.units : []);
+            setSelectedUnit("");
         } else {
-            setSelectedTags(prev => prev.filter(t => t !== tag));
+            setAvailableUnits([]);
         }
+    }, [selectedClass]);
+    
+    const handleAddFilter = () => {
+        if (selectedClass && selectedUnit) {
+            const newFilter = `${selectedClass}: ${selectedUnit}`;
+            if (!activeFilters.includes(newFilter)) {
+                setActiveFilters([...activeFilters, newFilter]);
+            }
+        } else if (selectedClass) {
+             if (!activeFilters.includes(selectedClass)) {
+                setActiveFilters([...activeFilters, selectedClass]);
+            }
+        }
+        setSelectedClass("");
+        setSelectedUnit("");
+        setIsFilterDialogOpen(false);
+    };
+
+    const handleRemoveFilter = (filterToRemove: string) => {
+        setActiveFilters(activeFilters.filter(f => f !== filterToRemove));
     };
     
     const UserLink = ({ authorId, children }: { authorId?: string, children: React.ReactNode }) => {
@@ -102,36 +125,54 @@ export default function ForumPage() {
               </DialogTrigger>
               <DialogContent>
                   <DialogHeader>
-                      <DialogTitle>Filter by Tags</DialogTitle>
+                      <DialogTitle>Filter by AP Class & Unit</DialogTitle>
                   </DialogHeader>
-                  <div className="grid grid-cols-2 gap-4 py-4">
-                      {allTags.map(tag => (
-                          <div key={tag} className="flex items-center space-x-2">
-                              <Checkbox 
-                                  id={`tag-${tag}`} 
-                                  checked={selectedTags.includes(tag)}
-                                  onCheckedChange={(checked) => handleTagSelectionChange(tag, checked)}
-                              />
-                              <Label htmlFor={`tag-${tag}`}>{tag}</Label>
-                          </div>
-                      ))}
+                  <div className="grid gap-4 py-4">
+                     <div className="grid gap-2 flex-1">
+                        <Label htmlFor="class-select" className="text-xs">AP Class</Label>
+                        <Select value={selectedClass} onValueChange={setSelectedClass}>
+                            <SelectTrigger id="class-select">
+                                <SelectValue placeholder="Select an AP Class" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {apCourses.map(course => (
+                                    <SelectItem key={course.name} value={course.name}>{course.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="grid gap-2 flex-1">
+                        <Label htmlFor="unit-select" className="text-xs">Unit / Topic (Optional)</Label>
+                         <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedClass}>
+                            <SelectTrigger id="unit-select">
+                                <SelectValue placeholder="Select a Unit" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableUnits.map(unit => (
+                                    <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                   </div>
-                  <Button onClick={() => setIsFilterDialogOpen(false)}>Apply Filters</Button>
+                  <DialogFooter>
+                    <Button onClick={handleAddFilter} disabled={!selectedClass}>Add Filter</Button>
+                  </DialogFooter>
               </DialogContent>
           </Dialog>
       </div>
-       {selectedTags.length > 0 && (
+       {activeFilters.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-medium">Active filters:</span>
-              {selectedTags.map(tag => (
+              {activeFilters.map(tag => (
                   <Badge key={tag} variant="secondary">
                       {tag}
-                      <button className="ml-1" onClick={() => handleTagSelectionChange(tag, false)}>
+                      <button className="ml-1" onClick={() => handleRemoveFilter(tag)}>
                         <X className="h-3 w-3" />
                       </button>
                   </Badge>
               ))}
-              <Button variant="ghost" size="sm" onClick={() => setSelectedTags([])}>Clear all</Button>
+              <Button variant="ghost" size="sm" onClick={() => setActiveFilters([])}>Clear all</Button>
           </div>
         )}
       <div className="grid gap-4">
@@ -154,7 +195,7 @@ export default function ForumPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex space-x-2">
+              <div className="flex flex-wrap gap-1">
                 {post.tags && post.tags.map(tag => (
                   <Badge key={tag} variant="secondary">{tag}</Badge>
                 ))}
@@ -176,6 +217,13 @@ export default function ForumPage() {
             </CardFooter>
           </Card>
         ))}
+         {filteredPosts.length === 0 && (
+            <Card>
+                <CardContent className="pt-6">
+                    <p className="text-center text-muted-foreground">No questions found matching your criteria.</p>
+                </CardContent>
+            </Card>
+        )}
       </div>
     </div>
   )

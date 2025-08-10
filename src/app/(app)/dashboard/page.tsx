@@ -69,7 +69,7 @@ export default function Dashboard() {
     const fetchAllActivity = async () => {
         // Fetch recent notes from all users
         const notesCollection = collection(db, "notes");
-        const recentNotesQuery = query(notesCollection, orderBy("date", "desc"), limit(3));
+        const recentNotesQuery = query(notesCollection, orderBy("date", "desc"), limit(10));
         const recentNotes = (await getDocs(recentNotesQuery)).docs.map(doc => ({
             id: doc.id,
             type: 'Note' as const,
@@ -81,7 +81,7 @@ export default function Dashboard() {
 
         // Fetch recent questions from all users
         const questionsCollection = collection(db, "questions");
-        const recentQuestionsQuery = query(questionsCollection, orderBy("date", "desc"), limit(3));
+        const recentQuestionsQuery = query(questionsCollection, orderBy("date", "desc"), limit(10));
         const recentQuestions = (await getDocs(recentQuestionsQuery)).docs.map(doc => ({
             id: doc.id,
             type: 'Question' as const,
@@ -92,7 +92,11 @@ export default function Dashboard() {
         }));
 
         // Combine and sort activities
-        const combinedActivity = [...recentNotes, ...recentQuestions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
+        const combinedActivity = [...recentNotes, ...recentQuestions].sort((a, b) => {
+            const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+            const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+            return dateB.getTime() - dateA.getTime();
+        }).slice(0, 10);
         
         setRecentActivity(combinedActivity);
     };

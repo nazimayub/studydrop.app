@@ -2,7 +2,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { doc, getDoc, updateDoc, increment } from "firebase/firestore"
+import { doc, getDoc, updateDoc, increment, writeBatch, arrayUnion, arrayRemove, runTransaction } from "firebase/firestore"
 import { db, auth } from "@/lib/firebase/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
 import { summarizeNote, type SummarizeNoteOutput } from "@/ai/flows/summarize-note-flow"
@@ -34,12 +34,19 @@ interface Note {
   tags?: NoteTag[];
   upvotes?: number;
   downvotes?: number;
+  votedBy?: string[];
+}
+
+interface UserVote {
+    type: 'upvote' | 'downvote';
+    userId: string;
 }
 
 export default function NoteDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const [user] = useAuthState(auth);
   const [note, setNote] = useState<Note | null>(null);
+  const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
   const [summary, setSummary] = useState<SummarizeNoteOutput | null>(null);
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -54,7 +61,17 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
     const noteDoc = doc(db, "notes", id);
     const noteSnapshot = await getDoc(noteDoc);
     if (noteSnapshot.exists()) {
-      setNote(noteSnapshot.data() as Note);
+        const noteData = noteSnapshot.data() as Note;
+        setNote(noteData);
+        if (user) {
+            const userVoteDocRef = doc(db, "users", user.uid, "votes", `note-${id}`);
+            const userVoteDoc = await getDoc(userVoteDocRef);
+            if (userVoteDoc.exists()) {
+                setUserVote(userVoteDoc.data().type);
+            } else {
+                setUserVote(null);
+            }
+        }
     }
   };
 
@@ -62,7 +79,7 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
     if (id) {
       fetchNote();
     }
-  }, [id]);
+  }, [id, user]);
 
   const handleSummarize = async () => {
     if (!note) return;
@@ -110,37 +127,71 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
   
   const handleVote = async (voteType: 'upvote' | 'downvote') => {
         if (!user) {
-            toast({
-                variant: "destructive",
-                title: "Login Required",
-                description: "You must be logged in to vote.",
-            });
+            toast({ variant: "destructive", title: "Login Required" });
             return;
         }
         if (user.uid === note?.authorId) {
-             toast({
-                variant: "destructive",
-                description: "You cannot vote on your own note.",
-            });
+             toast({ variant: "destructive", description: "You cannot vote on your own note." });
             return;
         }
 
+        const noteRef = doc(db, "notes", id);
+        const userVoteRef = doc(db, "users", user.uid, "votes", `note-${id}`);
+        const authorRef = doc(db, "users", note!.authorId);
+
         try {
-            const noteRef = doc(db, "notes", id);
-            const fieldToIncrement = voteType === 'upvote' ? 'upvotes' : 'downvotes';
-            await updateDoc(noteRef, {
-                [fieldToIncrement]: increment(1)
+            await runTransaction(db, async (transaction) => {
+                const noteDoc = await transaction.get(noteRef);
+                const userVoteDoc = await transaction.get(userVoteRef);
+
+                if (!noteDoc.exists()) {
+                    throw "Note does not exist!";
+                }
+
+                let newUpvotes = noteDoc.data().upvotes || 0;
+                let newDownvotes = noteDoc.data().downvotes || 0;
+                let pointsChange = 0;
+
+                const previousVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
+
+                if (previousVote === voteType) { // Undoing a vote
+                    if (voteType === 'upvote') {
+                        newUpvotes -= 1;
+                        pointsChange = -2;
+                    } else {
+                        newDownvotes -= 1;
+                    }
+                    transaction.delete(userVoteRef);
+                    setUserVote(null);
+                } else { // New vote or changing vote
+                    if (previousVote === 'upvote') {
+                        newUpvotes -= 1;
+                        pointsChange = -2;
+                    }
+                    if (previousVote === 'downvote') {
+                        newDownvotes -= 1;
+                    }
+
+                    if (voteType === 'upvote') {
+                        newUpvotes += 1;
+                        pointsChange += 2;
+                    } else {
+                        newDownvotes += 1;
+                    }
+                    transaction.set(userVoteRef, { type: voteType });
+                    setUserVote(voteType);
+                }
+                
+                transaction.update(noteRef, { upvotes: newUpvotes, downvotes: newDownvotes });
+                if (pointsChange !== 0 && note?.authorId) {
+                    transaction.update(authorRef, { points: increment(pointsChange) });
+                }
             });
 
-            if (note?.authorId && voteType === 'upvote') {
-                const authorRef = doc(db, "users", note.authorId);
-                await updateDoc(authorRef, {
-                    points: increment(2) 
-                });
-            }
-            fetchNote();
+            await fetchNote(); // Refetch to get the final state
         } catch (error) {
             console.error(`Error ${voteType}ing note:`, error);
+            toast({ variant: "destructive", title: "Error", description: "Your vote could not be recorded." });
         }
     };
 
@@ -286,13 +337,13 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
             <p style={{ whiteSpace: 'pre-line' }}>{note.content}</p>
           </div>
         </CardContent>
-         <CardFooter className="flex justify-end">
+         <CardFooter className="flex flex-col items-start gap-4">
              <VoteButtons
                 upvotes={note.upvotes || 0}
                 downvotes={note.downvotes || 0}
                 onUpvote={() => handleVote('upvote')}
                 onDownvote={() => handleVote('downvote')}
-                userVote={null} // Implement user vote tracking if needed
+                userVote={userVote}
              />
         </CardFooter>
       </Card>

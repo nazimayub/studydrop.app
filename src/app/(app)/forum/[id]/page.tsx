@@ -46,35 +46,40 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     const [user] = useAuthState(auth);
     const { toast } = useToast();
 
-    useEffect(() => {
+    const fetchPostAndAnswers = async () => {
         if (!id) return;
+        const postDoc = doc(db, "questions", id);
+        const postSnapshot = await getDoc(postDoc);
+        if (postSnapshot.exists()) {
+            const postData = postSnapshot.data();
+            setPost({ id: postSnapshot.id, ...postData } as Post);
+        }
 
-        const fetchPostAndAnswers = async () => {
-            const postDoc = doc(db, "questions", id);
-            const postSnapshot = await getDoc(postDoc);
-            if (postSnapshot.exists()) {
-                const postData = postSnapshot.data();
-                setPost({ id: postSnapshot.id, ...postData } as Post);
+        const answersCollection = collection(db, "questions", id, "answers");
+        const answersSnapshot = await getDocs(answersCollection);
+        const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer)).sort((a, b) => {
+            if (a.isAccepted && !b.isAccepted) return -1;
+            if (!a.isAccepted && b.isAccepted) return 1;
+            // Fallback to sorting by date if acceptance status is the same
+            if (b.date && a.date) {
+               return b.date.seconds - a.date.seconds;
             }
+            return 0;
+        });
+        setAnswers(answersList);
+    };
 
-            const answersCollection = collection(db, "questions", id, "answers");
-            const answersSnapshot = await getDocs(answersCollection);
-            const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer)).sort((a, b) => {
-                if (a.isAccepted && !b.isAccepted) return -1;
-                if (!a.isAccepted && b.isAccepted) return 1;
-                return b.date - a.date;
-            });
-            setAnswers(answersList);
-        };
-        
+    useEffect(() => {
         const incrementViewCount = async () => {
              const postRef = doc(db, "questions", id);
              await updateDoc(postRef, {
                 views: increment(1)
             });
         }
-        incrementViewCount();
-        fetchPostAndAnswers();
+        if (id) {
+            incrementViewCount();
+            fetchPostAndAnswers();
+        }
     }, [id]);
 
     const handlePostAnswer = async () => {
@@ -116,37 +121,12 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
             });
 
             setNewAnswer("");
-            const answersCollection = collection(db, "questions", id, "answers");
-            const answersSnapshot = await getDocs(answersCollection);
-            const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer)).sort((a, b) => {
-                if (a.isAccepted && !b.isAccepted) return -1;
-                if (!a.isAccepted && b.isAccepted) return 1;
-                return b.date - a.date;
-            });
-            setAnswers(answersList);
+            fetchPostAndAnswers();
         } catch (error) {
             console.error("Error adding document: ", error);
         }
     };
     
-    const fetchPostAndAnswers = async () => {
-        const postDoc = doc(db, "questions", id);
-        const postSnapshot = await getDoc(postDoc);
-        if (postSnapshot.exists()) {
-            const postData = postSnapshot.data();
-            setPost({ id: postSnapshot.id, ...postData } as Post);
-        }
-
-        const answersCollection = collection(db, "questions", id, "answers");
-        const answersSnapshot = await getDocs(answersCollection);
-        const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer)).sort((a, b) => {
-            if (a.isAccepted && !b.isAccepted) return -1;
-            if (!a.isAccepted && b.isAccepted) return 1;
-            return b.date - a.date;
-        });
-        setAnswers(answersList);
-    };
-
     const handleUpvoteQuestion = async () => {
         if (!user) {
             toast({
@@ -292,7 +272,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                  <CardFooter className="flex justify-end">
                     <Button variant="ghost" size="sm" onClick={handleUpvoteQuestion}>
                         <ThumbsUp className="mr-2 h-4 w-4" />
-                        {post.upvotes}
+                        {post.upvotes || 0}
                     </Button>
                 </CardFooter>
             </Card>
@@ -338,7 +318,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                              )}
                             <Button variant="ghost" size="sm" onClick={() => handleUpvoteAnswer(answer)}>
                                 <ThumbsUp className="mr-2 h-4 w-4" />
-                                {answer.upvotes}
+                                {answer.upvotes || 0}
                             </Button>
                         </CardFooter>
                     </Card>

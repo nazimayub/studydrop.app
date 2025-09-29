@@ -162,7 +162,7 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
             <div>
               <CardTitle className="font-headline text-3xl">{note.title}</CardTitle>
               <CardDescription>
-                Created on: {new Date(note.date).toLocaleDateString()} by{" "}
+                Created on: {note.date ? new Date(note.date).toLocaleDateString() : '...'} by{" "}
                 {note.authorId ? (
                    <Link href={`/users/${note.authorId}`} className="font-medium text-primary hover:underline">{note.authorName}</Link>
                 ) : (

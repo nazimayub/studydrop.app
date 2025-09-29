@@ -18,10 +18,11 @@ import { useAuthState } from "react-firebase-hooks/auth"
 import { auth } from "@/lib/firebase/firebase"
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 export function UserNav() {
-  const [user] = useAuthState(auth);
+  const [user, loading] = useAuthState(auth);
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -38,6 +39,10 @@ export function UserNav() {
         return user.displayName.substring(0, 2);
     }
     return "OD";
+  }
+
+  if (loading) {
+    return <Skeleton className="h-8 w-8 rounded-full" />;
   }
 
   if (!user) {

@@ -118,7 +118,7 @@ export default function AccountPage() {
             }
             return userData.name.substring(0, 2);
         }
-        return "SD";
+        return "OD";
     }
 
   return (

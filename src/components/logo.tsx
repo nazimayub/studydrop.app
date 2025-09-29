@@ -1,10 +1,11 @@
+
 import { BrainCircuit } from 'lucide-react';
 
 export function Logo() {
   return (
     <div className="flex items-center gap-2">
       <BrainCircuit className="h-6 w-6 text-primary" />
-      <span className="font-bold text-lg font-headline">Studydrop</span>
+      <span className="font-bold text-lg font-headline">opendesk</span>
     </div>
   );
 }

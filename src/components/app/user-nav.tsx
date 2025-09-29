@@ -37,7 +37,7 @@ export function UserNav() {
         }
         return user.displayName.substring(0, 2);
     }
-    return "SD";
+    return "OD";
   }
 
   if (!user) {
@@ -57,7 +57,7 @@ export function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.displayName || "Studydrop User"}</p>
+            <p className="text-sm font-medium leading-none">{user.displayName || "opendesk User"}</p>
             <p className="text-xs leading-none text-muted-foreground">
               {user.email}
             </p>

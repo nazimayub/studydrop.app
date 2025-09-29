@@ -89,7 +89,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     }, [id]);
 
     const handlePostAnswer = async () => {
-        if (!newAnswer.trim() || !user) return;
+        if (!newAnswer.trim() || !user || !post) return;
 
         const userDoc = await getDoc(doc(db, "users", user.uid));
         let authorName = "Anonymous";
@@ -120,11 +120,26 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 replies: increment(1)
             });
 
-
             const userDocRef = doc(db, "users", user.uid);
             await updateDoc(userDocRef, {
                 points: increment(15)
             });
+
+            // Create notification for question author
+            if (post.authorId && post.authorId !== user.uid) {
+                const questionAuthorDoc = await getDoc(doc(db, 'users', post.authorId));
+                if (questionAuthorDoc.exists() && questionAuthorDoc.data().notificationPreferences?.answersOnQuestions) {
+                    const notificationRef = collection(db, 'users', post.authorId, 'notifications');
+                    await addDoc(notificationRef, {
+                        type: 'new_answer',
+                        message: `${authorName} answered your question: "${post.title}"`,
+                        link: `/forum/${id}`,
+                        isRead: false,
+                        date: serverTimestamp(),
+                    });
+                }
+            }
+
 
             setNewAnswer("");
             fetchPostAndAnswers();

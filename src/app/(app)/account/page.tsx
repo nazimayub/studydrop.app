@@ -1,7 +1,7 @@
 
 "use client"
 import { useState, useEffect, ChangeEvent } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { updateProfile } from "firebase/auth";
 import { auth, db, storage } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -14,17 +14,36 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+
+interface NotificationPreferences {
+    commentsOnNotes: boolean;
+    answersOnQuestions: boolean;
+    repliesToComments: boolean;
+}
 
 interface UserData {
     name: string;
     email: string;
     bio: string;
     photoURL: string;
+    notificationPreferences: NotificationPreferences;
 }
 
 export default function AccountPage() {
     const [user] = useAuthState(auth);
-    const [userData, setUserData] = useState<UserData>({ name: "", email: "", bio: "", photoURL: "" });
+    const [userData, setUserData] = useState<UserData>({ 
+        name: "", 
+        email: "", 
+        bio: "", 
+        photoURL: "",
+        notificationPreferences: {
+            commentsOnNotes: true,
+            answersOnQuestions: true,
+            repliesToComments: true,
+        }
+    });
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const { toast } = useToast();
 
@@ -39,7 +58,12 @@ export default function AccountPage() {
                         name: user.displayName || `${data.firstName} ${data.lastName}`, 
                         email: user.email || data.email, 
                         bio: data.bio || "",
-                        photoURL: user.photoURL || data.photoURL || ""
+                        photoURL: user.photoURL || data.photoURL || "",
+                        notificationPreferences: data.notificationPreferences || {
+                            commentsOnNotes: true,
+                            answersOnQuestions: true,
+                            repliesToComments: true,
+                        }
                     });
                 }
             };
@@ -78,7 +102,6 @@ export default function AccountPage() {
               });
             }
 
-
             const userDoc = doc(db, "users", user.uid);
             const [firstName, ...lastNameParts] = userData.name.split(" ");
             const lastName = lastNameParts.join(" ");
@@ -88,7 +111,8 @@ export default function AccountPage() {
                 lastName,
                 email: userData.email,
                 bio: userData.bio,
-                photoURL: photoURL
+                photoURL: photoURL,
+                notificationPreferences: userData.notificationPreferences,
             }, { merge: true });
 
             toast({
@@ -110,6 +134,14 @@ export default function AccountPage() {
         setUserData((prev) => ({ ...prev, [id]: value }));
     };
 
+    const handleNotificationChange = (id: keyof NotificationPreferences) => {
+        const newPrefs = {
+            ...userData.notificationPreferences,
+            [id]: !userData.notificationPreferences[id],
+        };
+        setUserData(prev => ({...prev, notificationPreferences: newPrefs }));
+    };
+
     const getFallback = () => {
         if (userData.name) {
             const parts = userData.name.split(" ");
@@ -125,7 +157,7 @@ export default function AccountPage() {
     <div className="grid gap-6">
       <div>
         <h1 className="text-3xl font-bold font-headline">Account Settings</h1>
-        <p className="text-muted-foreground">Manage your profile information.</p>
+        <p className="text-muted-foreground">Manage your profile and notification settings.</p>
       </div>
        <Card>
         <CardHeader>
@@ -153,6 +185,28 @@ export default function AccountPage() {
             <Label htmlFor="bio">Bio</Label>
             <Textarea id="bio" placeholder="Tell us a little bit about yourself" value={userData.bio} onChange={handleInputChange}/>
           </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Notification Settings</CardTitle>
+          <CardDescription>Manage how you receive notifications.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+            <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                    <Label htmlFor="commentsOnNotes">Comments on my notes</Label>
+                    <p className="text-sm text-muted-foreground">Notify me when someone comments on a note I created.</p>
+                </div>
+                <Switch id="commentsOnNotes" checked={userData.notificationPreferences.commentsOnNotes} onCheckedChange={() => handleNotificationChange('commentsOnNotes')} />
+            </div>
+             <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                    <Label htmlFor="answersOnQuestions">Answers on my questions</Label>
+                    <p className="text-sm text-muted-foreground">Notify me when someone posts an answer to a question I asked.</p>
+                </div>
+                <Switch id="answersOnQuestions" checked={userData.notificationPreferences.answersOnQuestions} onCheckedChange={() => handleNotificationChange('answersOnQuestions')} />
+            </div>
         </CardContent>
       </Card>
       <Button className="mt-4" onClick={handleSaveChanges}>Save Changes</Button>

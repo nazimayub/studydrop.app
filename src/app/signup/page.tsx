@@ -53,7 +53,12 @@ export default function SignupPage() {
                 points: 0,
                 bio: "",
                 photoURL: "",
-                createdAt: serverTimestamp()
+                createdAt: serverTimestamp(),
+                notificationPreferences: {
+                    commentsOnNotes: true,
+                    answersOnQuestions: true,
+                    repliesToComments: true,
+                }
             });
 
             router.push("/dashboard");
@@ -97,7 +102,12 @@ export default function SignupPage() {
                     photoURL: user.photoURL,
                     points: 0,
                     bio: "",
-                    createdAt: serverTimestamp()
+                    createdAt: serverTimestamp(),
+                    notificationPreferences: {
+                        commentsOnNotes: true,
+                        answersOnQuestions: true,
+                        repliesToComments: true,
+                    }
                 });
             }
 

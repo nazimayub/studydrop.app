@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment, writeBatch, deleteDoc, runTransaction } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment, runTransaction, deleteDoc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import Link from "next/link";
@@ -112,7 +112,7 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
             const authorFallback = (user.displayName?.charAt(0) || userDocSnap.data()?.firstName?.charAt(0) || '') + (user.displayName?.split(' ')[1]?.charAt(0) || userDocSnap.data()?.lastName?.charAt(0) || '');
 
             
-            await addDoc(commentsCollectionRef, {
+            const newCommentRef = await addDoc(commentsCollectionRef, {
                 authorId: user.uid,
                 authorName,
                 authorAvatar,
@@ -126,6 +126,25 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
             await updateDoc(doc(db, "users", user.uid), {
                 points: increment(10)
             });
+
+            if (contentAuthorId && contentAuthorId !== user.uid) {
+                const contentAuthorDoc = await getDoc(doc(db, 'users', contentAuthorId));
+                if (contentAuthorDoc.exists() && contentAuthorDoc.data().notificationPreferences?.commentsOnNotes) {
+                     const notificationRef = collection(db, 'users', contentAuthorId, 'notifications');
+                     let link = contentType === 'note' ? `/notes/${contentId}` : `/forum/${contentId}`;
+                     const noteDoc = await getDoc(doc(db, collectionName, contentId));
+                     const title = noteDoc.exists() ? noteDoc.data().title : 'your post';
+
+                     await addDoc(notificationRef, {
+                        type: 'new_comment',
+                        message: `${authorName} commented on ${title}`,
+                        link: link,
+                        isRead: false,
+                        date: serverTimestamp(),
+                    });
+                }
+            }
+
 
             setNewComment("");
 

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { Analytics } from '@vercel/analytics/react';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 export const metadata: Metadata = {
   title: 'opendesk',
@@ -28,7 +29,9 @@ export default function RootLayout({
       </head>
       <body className={cn('min-h-screen bg-background font-body antialiased')}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
+          <SidebarProvider>
+            {children}
+          </SidebarProvider>
           <Toaster />
         </ThemeProvider>
         <Analytics />

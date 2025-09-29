@@ -207,6 +207,13 @@ export default function AccountPage() {
                 </div>
                 <Switch id="answersOnQuestions" checked={userData.notificationPreferences.answersOnQuestions} onCheckedChange={() => handleNotificationChange('answersOnQuestions')} />
             </div>
+             <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                    <Label htmlFor="repliesToComments">Replies to my comments</Label>
+                    <p className="text-sm text-muted-foreground">Notify me when someone replies to a comment or answer I posted.</p>
+                </div>
+                <Switch id="repliesToComments" checked={userData.notificationPreferences.repliesToComments} onCheckedChange={() => handleNotificationChange('repliesToComments')} />
+            </div>
         </CardContent>
       </Card>
       <Button className="mt-4" onClick={handleSaveChanges}>Save Changes</Button>

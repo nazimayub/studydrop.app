@@ -8,7 +8,6 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 
-import { moderateText } from "@/ai/flows/moderate-text-flow";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -107,17 +106,6 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
         setIsLoading(true);
         
         try {
-            const moderationResult = await moderateText({ text: newComment });
-            if (!moderationResult.isSafe) {
-                toast({
-                    variant: "destructive",
-                    title: "Comment Moderated",
-                    description: moderationResult.reason || "Your comment could not be posted.",
-                });
-                setIsLoading(false);
-                return;
-            }
-
             const userDocSnap = await getDoc(doc(db, "users", user.uid));
             const authorName = user.displayName || `${userDocSnap.data()?.firstName} ${userDocSnap.data()?.lastName}`;
             const authorAvatar = user.photoURL || userDocSnap.data()?.photoURL || "";

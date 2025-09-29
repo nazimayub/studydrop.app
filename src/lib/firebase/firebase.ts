@@ -3,6 +3,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
+import { getMessaging } from "firebase/messaging";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -19,6 +20,9 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
 
+const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
+
+
 // Explicitly set the auth domain to prevent intermittent issues.
 if (process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN) {
   auth.tenantId = null;
@@ -26,5 +30,4 @@ if (process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN) {
 }
 
 
-export { app, db, auth, storage };
-
+export { app, db, auth, storage, messaging };

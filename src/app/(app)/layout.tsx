@@ -44,6 +44,7 @@ import {
 import { Logo } from "@/components/logo"
 import { UserNav } from "@/components/app/user-nav"
 import { AppNav } from "@/components/app/app-nav"
+import { NotificationBell } from "@/components/app/notification-bell"
 
 export default function AppLayout({
   children,
@@ -130,6 +131,7 @@ export default function AppLayout({
               onKeyDown={handleSearch}
             />
           </div>
+          <NotificationBell />
           <UserNav />
         </header>
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">

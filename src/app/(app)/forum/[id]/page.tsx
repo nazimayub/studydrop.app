@@ -104,7 +104,10 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         }
 
         try {
-            await addDoc(collection(db, "questions", id, "answers"), {
+            const batch = writeBatch(db);
+
+            const answerRef = doc(collection(db, "questions", id, "answers"));
+            batch.set(answerRef, {
                 author: authorName,
                 avatar: authorAvatar,
                 fallback: authorFallback,
@@ -116,21 +119,17 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
             });
 
             const questionRef = doc(db, "questions", id);
-            await updateDoc(questionRef, {
-                replies: increment(1)
-            });
+            batch.update(questionRef, { replies: increment(1) });
 
             const userDocRef = doc(db, "users", user.uid);
-            await updateDoc(userDocRef, {
-                points: increment(15)
-            });
+            batch.update(userDocRef, { points: increment(15) });
 
             // Create notification for question author
             if (post.authorId && post.authorId !== user.uid) {
                 const questionAuthorDoc = await getDoc(doc(db, 'users', post.authorId));
                 if (questionAuthorDoc.exists() && questionAuthorDoc.data().notificationPreferences?.answersOnQuestions) {
-                    const notificationRef = collection(db, 'users', post.authorId, 'notifications');
-                    await addDoc(notificationRef, {
+                    const notificationRef = doc(collection(db, 'users', post.authorId, 'notifications'));
+                    batch.set(notificationRef, {
                         type: 'new_answer',
                         message: `${authorName} answered your question: "${post.title}"`,
                         link: `/forum/${id}`,
@@ -140,6 +139,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 }
             }
 
+            await batch.commit();
 
             setNewAnswer("");
             fetchPostAndAnswers();

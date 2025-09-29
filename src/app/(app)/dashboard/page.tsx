@@ -23,7 +23,8 @@ import {
   orderBy,
   doc,
   getDoc,
-  collectionGroup
+  collectionGroup,
+  onSnapshot
 } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -116,33 +117,34 @@ export default function Dashboard() {
         setRecentActivity(combinedActivity);
     };
 
-    const fetchUserStats = async () => {
-        if (!user) return;
-        
+    fetchAllActivity();
+
+    if (user) {
+        const unsubscribes: (() => void)[] = [];
+
         const notesQuery = query(collection(db, "notes"), where("authorId", "==", user.uid));
-        const notesSnapshot = await getDocs(notesQuery);
-        const notesCount = notesSnapshot.size;
+        unsubscribes.push(onSnapshot(notesQuery, (snapshot) => {
+            setStats(prev => ({ ...prev, notes: snapshot.size }));
+        }));
 
         const questionsQuery = query(collection(db, "questions"), where("authorId", "==", user.uid));
-        const questionsSnapshot = await getDocs(questionsQuery);
-        const questionsCount = questionsSnapshot.size;
-
-        const answersQuery = query(collectionGroup(db, 'answers'), where("authorId", "==", user.uid));
-        const answersSnapshot = await getDocs(answersQuery);
-        const answersCount = answersSnapshot.size;
+        unsubscribes.push(onSnapshot(questionsQuery, (snapshot) => {
+             setStats(prev => ({ ...prev, questions: snapshot.size }));
+        }));
         
-        let userPoints = 0;
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-            userPoints = userDoc.data().points || 0;
-        }
+        const answersQuery = query(collectionGroup(db, 'answers'), where("authorId", "==", user.uid));
+        unsubscribes.push(onSnapshot(answersQuery, (snapshot) => {
+            setStats(prev => ({ ...prev, answers: snapshot.size }));
+        }));
 
-        setStats({ notes: notesCount, questions: questionsCount, answers: answersCount, points: userPoints });
-    };
+        const userDocRef = doc(db, "users", user.uid);
+        unsubscribes.push(onSnapshot(userDocRef, (doc) => {
+            if (doc.exists()) {
+                setStats(prev => ({ ...prev, points: doc.data().points || 0 }));
+            }
+        }));
 
-    fetchAllActivity();
-    if (user) {
-        fetchUserStats();
+        return () => unsubscribes.forEach(unsub => unsub());
     }
   }, [user]);
 

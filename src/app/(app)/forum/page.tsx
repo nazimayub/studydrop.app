@@ -18,6 +18,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 
 
+interface ForumPostTag {
+    class: string;
+    topic: string;
+}
+
 interface ForumPost {
     id: string;
     title: string;
@@ -25,7 +30,7 @@ interface ForumPost {
     authorId: string;
     avatar: string;
     fallback: string;
-    tags: string[];
+    tags: ForumPostTag[];
     views: number;
     replies: number;
     upvotes: number;
@@ -37,11 +42,10 @@ export default function ForumPage() {
     const [filteredPosts, setFilteredPosts] = useState<ForumPost[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     
-    const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
     const [selectedClass, setSelectedClass] = useState("");
     const [availableUnits, setAvailableUnits] = useState<string[]>([]);
     const [selectedUnit, setSelectedUnit] = useState("");
-    const [activeFilters, setActiveFilters] = useState<string[]>([]);
+    const [activeFilters, setActiveFilters] = useState<ForumPostTag[]>([]);
 
 
     useEffect(() => {
@@ -63,7 +67,9 @@ export default function ForumPage() {
         }
         if (activeFilters.length > 0) {
             posts = posts.filter(post => 
-                activeFilters.every(filter => post.tags.some(tag => tag === filter || tag.startsWith(`${filter}:`)))
+                activeFilters.every(filter => 
+                    post.tags?.some(tag => tag.class === filter.class && tag.topic === filter.topic)
+                )
             );
         }
         setFilteredPosts(posts);
@@ -81,22 +87,16 @@ export default function ForumPage() {
     
     const handleAddFilter = () => {
         if (selectedClass && selectedUnit) {
-            const newFilter = `${selectedClass}: ${selectedUnit}`;
-            if (!activeFilters.includes(newFilter)) {
+            const newFilter = { class: selectedClass, topic: selectedUnit };
+            if (!activeFilters.some(f => f.class === newFilter.class && f.topic === newFilter.topic)) {
                 setActiveFilters([...activeFilters, newFilter]);
             }
-        } else if (selectedClass) {
-             if (!activeFilters.includes(selectedClass)) {
-                setActiveFilters([...activeFilters, selectedClass]);
-            }
+            setSelectedUnit("");
         }
-        setSelectedClass("");
-        setSelectedUnit("");
-        setIsFilterDialogOpen(false);
     };
 
-    const handleRemoveFilter = (filterToRemove: string) => {
-        setActiveFilters(activeFilters.filter(f => f !== filterToRemove));
+    const handleRemoveFilter = (filterToRemove: ForumPostTag) => {
+        setActiveFilters(activeFilters.filter(f => !(f.class === filterToRemove.class && f.topic === filterToRemove.topic)));
     };
     
     const UserLink = ({ authorId, children }: { authorId?: string, children: React.ReactNode }) => {
@@ -117,114 +117,104 @@ export default function ForumPage() {
           </Button>
         </Link>
       </div>
-      <div className="flex items-center gap-4">
-          <Input placeholder="Search questions..." className="flex-1" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}/>
-          <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline">Filter by Tag</Button>
-              </DialogTrigger>
-              <DialogContent>
-                  <DialogHeader>
-                      <DialogTitle>Filter by AP Class & Unit</DialogTitle>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                     <div className="grid gap-2 flex-1">
-                        <Label htmlFor="class-select" className="text-xs">AP Class</Label>
-                        <Select value={selectedClass} onValueChange={setSelectedClass}>
-                            <SelectTrigger id="class-select">
-                                <SelectValue placeholder="Select an AP Class" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {apCourses.map(course => (
-                                    <SelectItem key={course.name} value={course.name}>{course.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+      <Card>
+          <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex-1">
+                <Input placeholder="Search by question title..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              </div>
+              <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                    <Select value={selectedClass} onValueChange={setSelectedClass}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Filter by AP Class" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {apCourses.map(course => (
+                                <SelectItem key={course.name} value={course.name}>{course.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                     <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedClass}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Filter by Unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableUnits.map(unit => (
+                                <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Button onClick={handleAddFilter} disabled={!selectedUnit}>Add Filter</Button>
+                </div>
+          </CardHeader>
+            {activeFilters.length > 0 && (
+                <CardContent className="border-t pt-4">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium">Active filters:</span>
+                        {activeFilters.map(filter => (
+                            <Badge key={`${filter.class}-${filter.topic}`} variant="secondary">
+                                {filter.class}: {filter.topic}
+                                <button className="ml-1" onClick={() => handleRemoveFilter(filter)}>
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </Badge>
+                        ))}
+                        <Button variant="ghost" size="sm" onClick={() => setActiveFilters([])}>Clear all</Button>
                     </div>
-                    <div className="grid gap-2 flex-1">
-                        <Label htmlFor="unit-select" className="text-xs">Unit / Topic (Optional)</Label>
-                         <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedClass}>
-                            <SelectTrigger id="unit-select">
-                                <SelectValue placeholder="Select a Unit" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableUnits.map(unit => (
-                                    <SelectItem key={unit} value={unit}>{unit}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={handleAddFilter} disabled={!selectedClass}>Add Filter</Button>
-                  </DialogFooter>
-              </DialogContent>
-          </Dialog>
-      </div>
-       {activeFilters.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-medium">Active filters:</span>
-              {activeFilters.map(tag => (
-                  <Badge key={tag} variant="secondary">
-                      {tag}
-                      <button className="ml-1" onClick={() => handleRemoveFilter(tag)}>
-                        <X className="h-3 w-3" />
-                      </button>
-                  </Badge>
-              ))}
-              <Button variant="ghost" size="sm" onClick={() => setActiveFilters([])}>Clear all</Button>
-          </div>
-        )}
-      <div className="grid gap-4">
-        {filteredPosts.map(post => (
-          <Card key={post.id}>
-            <CardHeader className="flex flex-row items-start gap-4">
-               <UserLink authorId={post.authorId}>
-                  <Avatar>
-                    <AvatarImage src={post.avatar} />
-                    <AvatarFallback>{post.fallback}</AvatarFallback>
-                  </Avatar>
-               </UserLink>
-              <div className="grid gap-1">
-                <Link href={`/forum/${post.id}`}>
-                    <CardTitle className="hover:underline">{post.title}</CardTitle>
-                </Link>
-                <CardDescription>
-                  Asked by <UserLink authorId={post.authorId}>{post.author}</UserLink> on {new Date(post.date?.seconds * 1000).toLocaleDateString()}
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-1">
-                {post.tags && post.tags.map(tag => (
-                  <Badge key={tag} variant="secondary">{tag}</Badge>
-                ))}
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-end space-x-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <ThumbsUp className="h-4 w-4" />
-                {post.upvotes || 0}
-              </div>
-              <div className="flex items-center gap-1">
-                <MessageSquare className="h-4 w-4" />
-                {post.replies || 0} Replies
-              </div>
-              <div className="flex items-center gap-1">
-                <Eye className="h-4 w-4" />
-                {post.views || 0} Views
-              </div>
-            </CardFooter>
-          </Card>
-        ))}
-         {filteredPosts.length === 0 && (
-            <Card>
-                <CardContent className="pt-6">
-                    <p className="text-center text-muted-foreground">No questions found matching your criteria.</p>
                 </CardContent>
-            </Card>
-        )}
-      </div>
+            )}
+            <CardContent className="p-0">
+                <div className="grid">
+                    {filteredPosts.map(post => (
+                    <div key={post.id} className="flex items-start gap-4 p-4 border-b last:border-b-0">
+                        <UserLink authorId={post.authorId}>
+                            <Avatar>
+                                <AvatarImage src={post.avatar} />
+                                <AvatarFallback>{post.fallback}</AvatarFallback>
+                            </Avatar>
+                        </UserLink>
+                        <div className="grid gap-1 flex-1">
+                            <Link href={`/forum/${post.id}`} className="hover:underline">
+                                <h3 className="font-semibold">{post.title}</h3>
+                            </Link>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                                {post.tags && post.tags.map(tag => (
+                                <Badge key={`${tag.class}-${tag.topic}`} variant="secondary">{tag.class}: {tag.topic}</Badge>
+                                ))}
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Asked by <UserLink authorId={post.authorId}>{post.author}</UserLink> on {new Date(post.date?.seconds * 1000).toLocaleDateString()}
+                            </p>
+                        </div>
+                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                                <ThumbsUp className="h-4 w-4" />
+                                {post.upvotes || 0}
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <MessageSquare className="h-4 w-4" />
+                                {post.replies || 0}
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <Eye className="h-4 w-4" />
+                                {post.views || 0}
+                            </div>
+                        </div>
+                    </div>
+                    ))}
+                    {filteredPosts.length === 0 && (
+                        <div className="p-6 text-center text-muted-foreground">
+                            No questions found matching your criteria.
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+             <CardFooter>
+                <div className="text-xs text-muted-foreground">
+                Showing <strong>{filteredPosts.length}</strong> of <strong>{allPosts.length}</strong> questions.
+                </div>
+            </CardFooter>
+      </Card>
+      
     </div>
   )
 }

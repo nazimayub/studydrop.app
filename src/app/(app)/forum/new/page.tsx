@@ -1,12 +1,13 @@
 
 "use client"
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-
+import { useToast } from "@/hooks/use-toast";
+import { apCourses } from "@/lib/ap-courses";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,19 +15,66 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+interface Tag {
+    class: string;
+    topic: string;
+}
 
 export default function NewQuestionPage() {
     const [title, setTitle] = useState("");
-    const [tags, setTags] = useState("");
+    const [tags, setTags] = useState<Tag[]>([]);
     const [description, setDescription] = useState("");
     const [isAnonymous, setIsAnonymous] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
     const [user] = useAuthState(auth);
+    const { toast } = useToast();
+    
+    const [selectedClass, setSelectedClass] = useState("");
+    const [availableUnits, setAvailableUnits] = useState<string[]>([]);
+    const [selectedUnit, setSelectedUnit] = useState("");
+
+     useEffect(() => {
+        if (selectedClass) {
+            const course = apCourses.find(c => c.name === selectedClass);
+            setAvailableUnits(course ? course.units : []);
+            setSelectedUnit(""); // Reset unit when class changes
+        } else {
+            setAvailableUnits([]);
+        }
+    }, [selectedClass]);
+
+    const handleAddTag = () => {
+        if (selectedClass && selectedUnit) {
+            const newTag = { class: selectedClass, topic: selectedUnit };
+            if (!tags.some(tag => tag.class === newTag.class && tag.topic === newTag.topic)) {
+                setTags([...tags, newTag]);
+            }
+            setSelectedUnit("");
+        }
+    };
+
+    const handleRemoveTag = (tagToRemove: Tag) => {
+        setTags(tags.filter(tag => !(tag.class === tagToRemove.class && tag.topic === tagToRemove.topic)));
+    };
+
 
     const handlePostQuestion = async () => {
         if (!user) {
             router.push("/login");
+            return;
+        }
+
+        if (!title || !description) {
+             toast({
+                variant: "destructive",
+                title: "Missing fields",
+                description: "Please fill out title and description.",
+            });
             return;
         }
 
@@ -50,7 +98,7 @@ export default function NewQuestionPage() {
         try {
             await addDoc(collection(db, "questions"), {
                 title,
-                tags: tags.split(",").map(tag => tag.trim()),
+                tags,
                 content: description,
                 authorId: isAnonymous ? null : user.uid,
                 author: authorName,
@@ -89,9 +137,47 @@ export default function NewQuestionPage() {
                         <Label htmlFor="title">Question / Title</Label>
                         <Input id="title" placeholder="What is your question?" value={title} onChange={(e) => setTitle(e.target.value)} />
                     </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="tags">Tags</Label>
-                        <Input id="tags" placeholder="e.g. physics, javascript, history" value={tags} onChange={(e) => setTags(e.target.value)} />
+                     <div className="grid gap-4">
+                        <Label>Tags</Label>
+                        <div className="flex flex-wrap gap-2">
+                            {tags.map(tag => (
+                                <Badge key={`${tag.class}-${tag.topic}`} variant="secondary">
+                                    {tag.class}: {tag.topic}
+                                    <button className="ml-1" onClick={() => handleRemoveTag(tag)}>
+                                        <X className="h-3 w-3" />
+                                    </button>
+                                </Badge>
+                            ))}
+                        </div>
+                        <div className="flex items-end gap-2">
+                             <div className="grid gap-2 flex-1">
+                                <Label htmlFor="class-select" className="text-xs">AP Class</Label>
+                                <Select value={selectedClass} onValueChange={setSelectedClass}>
+                                    <SelectTrigger id="class-select">
+                                        <SelectValue placeholder="Select an AP Class" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {apCourses.map(course => (
+                                            <SelectItem key={course.name} value={course.name}>{course.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid gap-2 flex-1">
+                                <Label htmlFor="unit-select" className="text-xs">Unit / Topic</Label>
+                                 <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedClass}>
+                                    <SelectTrigger id="unit-select">
+                                        <SelectValue placeholder="Select a Unit" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {availableUnits.map(unit => (
+                                            <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <Button variant="outline" onClick={handleAddTag}>Add Tag</Button>
+                        </div>
                     </div>
                      <div className="grid gap-2">
                         <Label htmlFor="description">Description</Label>

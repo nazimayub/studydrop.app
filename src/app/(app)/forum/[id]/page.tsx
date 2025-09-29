@@ -13,7 +13,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, ThumbsUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
+interface PostTag {
+    class: string;
+    topic: string;
+}
 interface Post {
     id: string;
     title: string;
@@ -24,6 +29,7 @@ interface Post {
     date: any;
     content: string;
     upvotes: number;
+    tags?: PostTag[];
 }
 
 interface Answer {
@@ -246,6 +252,15 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     const UserLink = ({ authorId, children }: { authorId: string, children: React.ReactNode }) => {
         return authorId ? <Link href={`/users/${authorId}`} className="hover:underline">{children}</Link> : <>{children}</>;
     };
+    
+    const groupedTags = post.tags?.reduce((acc, tag) => {
+    if (!acc[tag.class]) {
+        acc[tag.class] = [];
+    }
+    acc[tag.class].push(tag.topic);
+    return acc;
+    }, {} as Record<string, string[]>);
+
 
     return (
         <div className="grid gap-6">
@@ -267,6 +282,18 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                     </div>
                 </CardHeader>
                 <CardContent>
+                    {groupedTags && Object.keys(groupedTags).length > 0 && (
+                        <div className="mb-4">
+                            {Object.entries(groupedTags).map(([className, topics]) => (
+                                <div key={className} className="flex items-baseline gap-2 mb-2">
+                                    <h4 className="font-semibold">{className}:</h4>
+                                    <div className="flex flex-wrap gap-1">
+                                        {topics.map(topic => <Badge key={topic} variant="secondary">{topic}</Badge>)}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                     <p className="whitespace-pre-wrap">{post.content}</p>
                 </CardContent>
                  <CardFooter className="flex justify-end">

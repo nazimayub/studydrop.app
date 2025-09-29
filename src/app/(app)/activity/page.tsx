@@ -29,7 +29,7 @@ interface Activity {
     author: string;
     authorId?: string;
     date: Date;
-    tags: (ActivityTag[] | string[]);
+    tags: ActivityTag[];
     url: string;
 }
 
@@ -41,7 +41,7 @@ export default function ActivityPage() {
     const [selectedClass, setSelectedClass] = useState("");
     const [availableUnits, setAvailableUnits] = useState<string[]>([]);
     const [selectedUnit, setSelectedUnit] = useState("");
-    const [activeFilters, setActiveFilters] = useState<string[]>([]);
+    const [activeFilters, setActiveFilters] = useState<ActivityTag[]>([]);
 
 
     useEffect(() => {
@@ -97,16 +97,9 @@ export default function ActivityPage() {
         }
        if (activeFilters.length > 0) {
             activity = activity.filter(item => {
-                return activeFilters.every(filter => {
-                    if (item.type === 'Note') {
-                        const noteTags = item.tags as ActivityTag[];
-                        const [filterClass, filterTopic] = filter.split(': ');
-                        return noteTags.some(tag => tag.class === filterClass && tag.topic === filterTopic);
-                    } else {
-                        const questionTags = item.tags as string[];
-                         return questionTags.some(tag => tag === filter || tag.startsWith(`${filter}:`));
-                    }
-                });
+                return activeFilters.every(filter => 
+                    item.tags?.some(tag => tag.class === filter.class && tag.topic === filter.topic)
+                );
             });
         }
         setFilteredActivity(activity);
@@ -124,21 +117,17 @@ export default function ActivityPage() {
     
     const handleAddFilter = () => {
         if (selectedClass && selectedUnit) {
-            const newFilter = `${selectedClass}: ${selectedUnit}`;
-            if (!activeFilters.includes(newFilter)) {
+            const newFilter = { class: selectedClass, topic: selectedUnit };
+             if (!activeFilters.some(f => f.class === newFilter.class && f.topic === newFilter.topic)) {
                 setActiveFilters([...activeFilters, newFilter]);
-            }
-        } else if (selectedClass) {
-             if (!activeFilters.includes(selectedClass)) {
-                setActiveFilters([...activeFilters, selectedClass]);
             }
         }
         setSelectedClass("");
         setSelectedUnit("");
     };
 
-    const handleRemoveFilter = (filterToRemove: string) => {
-        setActiveFilters(activeFilters.filter(f => f !== filterToRemove));
+    const handleRemoveFilter = (filterToRemove: ActivityTag) => {
+        setActiveFilters(activeFilters.filter(f => !(f.class === filterToRemove.class && f.topic === filterToRemove.topic)));
     };
     
     const UserLink = ({ authorId, children }: { authorId?: string, children: React.ReactNode }) => {
@@ -180,7 +169,7 @@ export default function ActivityPage() {
                             ))}
                         </SelectContent>
                     </Select>
-                    <Button onClick={handleAddFilter} disabled={!selectedClass}>Add Filter</Button>
+                    <Button onClick={handleAddFilter} disabled={!selectedUnit}>Add Filter</Button>
                 </div>
               </div>
           </CardHeader>
@@ -189,8 +178,8 @@ export default function ActivityPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium">Active filters:</span>
                         {activeFilters.map(tag => (
-                            <Badge key={tag} variant="secondary">
-                                {tag}
+                            <Badge key={`${tag.class}-${tag.topic}`} variant="secondary">
+                                {tag.class}: {tag.topic}
                                 <button className="ml-1" onClick={() => handleRemoveFilter(tag)}>
                                     <X className="h-3 w-3" />
                                 </button>
@@ -230,7 +219,7 @@ export default function ActivityPage() {
                           <div className="flex flex-wrap gap-1">
                             {Array.isArray(activity.tags) && activity.tags.map((tag: any, index: number) => (
                               <Badge key={index} variant="secondary">
-                                {typeof tag === 'string' ? tag : `${tag.class}: ${tag.topic}`}
+                                {`${tag.class}: ${tag.topic}`}
                               </Badge>
                             ))}
                           </div>

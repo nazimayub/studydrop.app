@@ -261,7 +261,7 @@ export default function Dashboard() {
                             {activity.type}
                         </Badge>
                         </TableCell>
-                        <TableCell className="text-right">{activity.date.toLocaleDateString()}</TableCell>
+                        <TableCell className="text-right">{activity.date ? activity.date.toLocaleDateString() : ''}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

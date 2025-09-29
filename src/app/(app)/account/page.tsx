@@ -143,12 +143,15 @@ export default function AccountPage() {
     };
 
     const getFallback = () => {
-        if (userData.name) {
-            const parts = userData.name.split(" ");
-            if (parts.length > 1 && parts[0] && parts[1]) {
-                return `${parts[0][0]}${parts[1][0]}`;
-            }
-            return userData.name.substring(0, 2);
+        if (!userData.name) {
+            return "OD";
+        }
+        const parts = userData.name.split(" ").filter(Boolean);
+        if (parts.length > 1) {
+            return `${parts[0][0]}${parts[parts.length-1][0]}`;
+        }
+        if (parts.length === 1 && parts[0].length > 1) {
+            return parts[0].substring(0, 2);
         }
         return "OD";
     }
@@ -168,7 +171,7 @@ export default function AccountPage() {
             <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20">
                     <AvatarImage src={userData.photoURL} />
-                    <AvatarFallback>{getFallback()}</AvatarFallback>
+                    <AvatarFallback key={userData.name}>{getFallback()}</AvatarFallback>
                 </Avatar>
                  <Input id="avatar-upload" type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
                 <Button variant="outline" onClick={() => document.getElementById('avatar-upload')?.click()}>Change Avatar</Button>
@@ -183,7 +186,7 @@ export default function AccountPage() {
           </div>
            <div className="space-y-2">
             <Label htmlFor="bio">Bio</Label>
-            <Textarea id="bio" placeholder="Tell us a little bit about yourself" value={userData.bio} onChange={handleInputChange}/>
+            <Textarea id="bio" placeholder="Tell us a little bit about yourself" value={userData.bio} onChange={handleInputChange} />
           </div>
         </CardContent>
       </Card>

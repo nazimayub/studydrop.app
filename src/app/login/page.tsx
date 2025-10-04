@@ -1,7 +1,7 @@
 
 "use client"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth"
 import { auth } from "@/lib/firebase/firebase"
@@ -24,7 +24,13 @@ export default function LoginPage() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const redirectUrl = searchParams.get('redirect')
     const { toast } = useToast()
+
+    const handleSuccess = () => {
+        router.push(redirectUrl || "/dashboard");
+    }
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -37,7 +43,7 @@ export default function LoginPage() {
         }
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            router.push("/dashboard");
+            handleSuccess();
         } catch (error: any) {
             console.error("Error logging in: ", error);
             toast({
@@ -53,7 +59,7 @@ export default function LoginPage() {
             const provider = new GoogleAuthProvider();
             provider.setCustomParameters({ prompt: 'select_account' });
             await signInWithPopup(auth, provider);
-            router.push("/dashboard");
+            handleSuccess();
         } catch (error: any) {
             console.error("Error with Google login: ", error);
             if (error.code === 'auth/popup-closed-by-user') {
@@ -109,7 +115,7 @@ export default function LoginPage() {
                   Forgot your password?
                 </Link>
               </div>
-              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
             </div>
             <Button onClick={handleLogin} className="w-full">
             Login

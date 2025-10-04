@@ -2,8 +2,8 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import React, { useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
+import React, { useState, useEffect } from "react"
 import {
   Award,
   BookOpen,
@@ -16,14 +16,6 @@ import {
   Users,
 } from "lucide-react"
 
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -45,8 +37,9 @@ import { Logo } from "@/components/logo"
 import { UserNav } from "@/components/app/user-nav"
 import { AppNav } from "@/components/app/app-nav"
 import { NotificationBell } from "@/components/app/notification-bell"
+import { withAuth } from "@/components/app/with-auth"
 
-export default function AppLayout({
+function AppLayoutContent({
   children,
 }: {
   children: React.ReactNode
@@ -141,3 +134,5 @@ export default function AppLayout({
     </div>
   )
 }
+
+export default withAuth(AppLayoutContent);

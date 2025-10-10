@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, ThumbsUp } from "lucide-react";
+import { CheckCircle, ThumbsUp, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -30,6 +30,8 @@ interface Post {
     content: string;
     upvotes: number;
     tags?: PostTag[];
+    attachmentURL?: string;
+    attachmentName?: string;
 }
 
 interface Answer {
@@ -307,6 +309,16 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    )}
+                    {post.attachmentURL && (
+                        <div className="mb-4">
+                            <a href={post.attachmentURL} target="_blank" rel="noopener noreferrer">
+                                <Button variant="outline">
+                                    <Paperclip className="mr-2 h-4 w-4" />
+                                    {post.attachmentName || 'View Attachment'}
+                                </Button>
+                            </a>
                         </div>
                     )}
                     <p className="whitespace-pre-wrap">{post.content}</p>

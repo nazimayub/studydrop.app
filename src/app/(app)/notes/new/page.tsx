@@ -3,8 +3,9 @@
 
 import { useState, useEffect } from "react";
 import { collection, addDoc, doc, getDocs } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useRouter } from "next/navigation";
-import { db, auth } from "@/lib/firebase/firebase";
+import { db, auth, storage } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -16,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X } from "lucide-react";
+import { X, Paperclip, File as FileIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Tag {
@@ -28,6 +29,7 @@ export default function NewNotePage() {
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
     const [tags, setTags] = useState<Tag[]>([]);
+    const [attachment, setAttachment] = useState<File | null>(null);
     
     const [selectedClass, setSelectedClass] = useState("");
     const [availableUnits, setAvailableUnits] = useState<string[]>([]);
@@ -62,6 +64,12 @@ export default function NewNotePage() {
     const handleRemoveTag = (tagToRemove: Tag) => {
         setTags(tags.filter(tag => !(tag.class === tagToRemove.class && tag.topic === tagToRemove.topic)));
     };
+    
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setAttachment(e.target.files[0]);
+        }
+    };
 
     const handleCreateNote = async () => {
         if (!user) {
@@ -81,6 +89,15 @@ export default function NewNotePage() {
         setIsLoading(true);
 
         try {
+            let attachmentURL = "";
+            let attachmentName = "";
+            if (attachment) {
+                const storageRef = ref(storage, `attachments/notes/${user.uid}/${Date.now()}_${attachment.name}`);
+                await uploadBytes(storageRef, attachment);
+                attachmentURL = await getDownloadURL(storageRef);
+                attachmentName = attachment.name;
+            }
+
             await addDoc(collection(db, "notes"), {
                 title,
                 content,
@@ -90,6 +107,8 @@ export default function NewNotePage() {
                 authorId: user.uid,
                 authorName: user.displayName || "Anonymous",
                 isPublic: true,
+                attachmentURL,
+                attachmentName
             });
             
             toast({
@@ -167,6 +186,19 @@ export default function NewNotePage() {
                      <div className="grid gap-2">
                         <Label htmlFor="content">Content</Label>
                         <Textarea id="content" placeholder="Write your note here..." rows={10} value={content} onChange={(e) => setContent(e.target.value)} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="attachment">Attachment</Label>
+                        <Input id="attachment" type="file" onChange={handleFileChange} />
+                         {attachment && (
+                            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md">
+                                <FileIcon className="h-4 w-4" />
+                                <span>{attachment.name}</span>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => setAttachment(null)}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end">

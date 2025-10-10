@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { VoteButtons } from "@/components/app/vote-buttons"
 import { CommentsSection } from "@/components/app/comments-section"
 import { useToast } from "@/hooks/use-toast"
+import { Paperclip } from "lucide-react"
 
 interface NoteTag {
     class: string;
@@ -31,6 +32,8 @@ interface Note {
   upvotes?: number;
   downvotes?: number;
   votedBy?: string[];
+  attachmentURL?: string;
+  attachmentName?: string;
 }
 
 interface UserVote {
@@ -188,6 +191,16 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
                     ))}
                 </div>
             )}
+          {note.attachmentURL && (
+            <div className="mb-4">
+                <a href={note.attachmentURL} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline">
+                        <Paperclip className="mr-2 h-4 w-4" />
+                        {note.attachmentName || 'View Attachment'}
+                    </Button>
+                </a>
+            </div>
+          )}
           <div className="prose dark:prose-invert max-w-none">
             <p style={{ whiteSpace: 'pre-line' }}>{note.content}</p>
           </div>

@@ -4,7 +4,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment } from "firebase/firestore";
-import { db, auth } from "@/lib/firebase/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, auth, storage } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apCourses } from "@/lib/ap-courses";
@@ -16,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X } from "lucide-react";
+import { X, File as FileIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Tag {
@@ -29,6 +30,7 @@ export default function NewQuestionPage() {
     const [tags, setTags] = useState<Tag[]>([]);
     const [description, setDescription] = useState("");
     const [isAnonymous, setIsAnonymous] = useState(false);
+    const [attachment, setAttachment] = useState<File | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
     const [user] = useAuthState(auth);
@@ -60,6 +62,12 @@ export default function NewQuestionPage() {
 
     const handleRemoveTag = (tagToRemove: Tag) => {
         setTags(tags.filter(tag => !(tag.class === tagToRemove.class && tag.topic === tagToRemove.topic)));
+    };
+    
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setAttachment(e.target.files[0]);
+        }
     };
 
 
@@ -93,6 +101,15 @@ export default function NewQuestionPage() {
                 authorAvatar = userData.photoURL || "";
             }
         }
+        
+        let attachmentURL = "";
+        let attachmentName = "";
+        if (attachment) {
+            const storageRef = ref(storage, `attachments/questions/${user.uid}/${Date.now()}_${attachment.name}`);
+            await uploadBytes(storageRef, attachment);
+            attachmentURL = await getDownloadURL(storageRef);
+            attachmentName = attachment.name;
+        }
 
 
         try {
@@ -108,6 +125,8 @@ export default function NewQuestionPage() {
                 views: 0,
                 replies: 0,
                 upvotes: 0,
+                attachmentURL,
+                attachmentName,
             });
 
             if (!isAnonymous) {
@@ -182,6 +201,19 @@ export default function NewQuestionPage() {
                      <div className="grid gap-2">
                         <Label htmlFor="description">Description</Label>
                         <Textarea id="description" placeholder="Add more details about your question..." rows={10} value={description} onChange={(e) => setDescription(e.target.value)} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="attachment">Attachment</Label>
+                        <Input id="attachment" type="file" onChange={handleFileChange} />
+                         {attachment && (
+                            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md">
+                                <FileIcon className="h-4 w-4" />
+                                <span>{attachment.name}</span>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => setAttachment(null)}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        )}
                     </div>
                     <div className="flex items-center space-x-2">
                         <Checkbox id="anonymous" checked={isAnonymous} onCheckedChange={(e) => setIsAnonymous(e === true)} />

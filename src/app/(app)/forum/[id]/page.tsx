@@ -1,7 +1,7 @@
 
 "use client"
 import { useEffect, useState } from "react";
-import { doc, getDoc, collection, getDocs, addDoc, serverTimestamp, updateDoc, increment, writeBatch } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, increment, writeBatch, runTransaction, query, onSnapshot, orderBy } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import Link from 'next/link';
@@ -11,9 +11,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, ThumbsUp, Paperclip } from "lucide-react";
+import { CheckCircle, ThumbsUp, Paperclip, ThumbsDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { VoteButtons } from "@/components/app/vote-buttons";
+import { CommentsSection } from "@/components/app/comments-section";
+
 
 interface PostTag {
     class: string;
@@ -29,6 +32,7 @@ interface Post {
     date: any;
     content: string;
     upvotes: number;
+    downvotes: number;
     tags?: PostTag[];
     attachmentURL?: string;
     attachmentName?: string;
@@ -43,7 +47,12 @@ interface Answer {
     date: any;
     content: string;
     upvotes: number;
+    downvotes: number;
     isAccepted?: boolean;
+}
+
+interface UserVoteState {
+    [answerId: string]: 'up' | 'down' | null;
 }
 
 export default function ForumPostPage({ params }: { params: { id: string } }) {
@@ -53,28 +62,65 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     const [newAnswer, setNewAnswer] = useState("");
     const [user] = useAuthState(auth);
     const { toast } = useToast();
+    const [userVotes, setUserVotes] = useState<UserVoteState>({});
+    const [postUserVote, setPostUserVote] = useState<'up' | 'down' | null>(null);
 
-    const fetchPostAndAnswers = async () => {
+
+    const fetchPostAndAnswers = () => {
         if (!id) return;
-        const postDoc = doc(db, "questions", id);
-        const postSnapshot = await getDoc(postDoc);
-        if (postSnapshot.exists()) {
-            const postData = postSnapshot.data();
-            setPost({ id: postSnapshot.id, ...postData } as Post);
-        }
+        
+        const postUnsubscribe = onSnapshot(doc(db, "questions", id), async (postSnapshot) => {
+            if (postSnapshot.exists()) {
+                const postData = postSnapshot.data() as Post;
+                setPost({ id: postSnapshot.id, ...postData });
+
+                 if (user) {
+                    const userVoteDocRef = doc(db, "users", user.uid, "votes", `question-${id}`);
+                    const userVoteDoc = await getDoc(userVoteDocRef);
+                    if (userVoteDoc.exists()) {
+                        setPostUserVote(userVoteDoc.data().type);
+                    } else {
+                        setPostUserVote(null);
+                    }
+                }
+            }
+        });
 
         const answersCollection = collection(db, "questions", id, "answers");
-        const answersSnapshot = await getDocs(answersCollection);
-        const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer)).sort((a, b) => {
-            if (a.isAccepted && !b.isAccepted) return -1;
-            if (!a.isAccepted && b.isAccepted) return 1;
-            // Fallback to sorting by date if acceptance status is the same
-            if (b.date && a.date) {
-               return b.date.seconds - a.date.seconds;
+        const answersQuery = query(answersCollection, orderBy("date", "desc"));
+        const answersUnsubscribe = onSnapshot(answersQuery, async (answersSnapshot) => {
+            const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer)).sort((a, b) => {
+                if (a.isAccepted && !b.isAccepted) return -1;
+                if (!a.isAccepted && b.isAccepted) return 1;
+                const scoreA = (a.upvotes || 0) - (a.downvotes || 0);
+                const scoreB = (b.upvotes || 0) - (b.downvotes || 0);
+                if (scoreA !== scoreB) return scoreB - scoreA;
+                if (b.date && a.date) {
+                   return b.date.seconds - a.date.seconds;
+                }
+                return 0;
+            });
+            setAnswers(answersList);
+
+            if (user) {
+                const newVotes: UserVoteState = {};
+                for (const answer of answersList) {
+                    const voteDocRef = doc(db, "users", user.uid, "votes", `answer-${answer.id}`);
+                    const voteDoc = await getDoc(voteDocRef);
+                    if (voteDoc.exists()) {
+                        newVotes[answer.id] = voteDoc.data().type;
+                    } else {
+                        newVotes[answer.id] = null;
+                    }
+                }
+                setUserVotes(newVotes);
             }
-            return 0;
         });
-        setAnswers(answersList);
+
+        return () => {
+            postUnsubscribe();
+            answersUnsubscribe();
+        };
     };
 
     useEffect(() => {
@@ -82,13 +128,14 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
              const postRef = doc(db, "questions", id);
              await updateDoc(postRef, {
                 views: increment(1)
-            });
+            }).catch(err => console.error("Failed to increment view count:", err));
         }
         if (id) {
             incrementViewCount();
-            fetchPostAndAnswers();
+            const unsubscribe = fetchPostAndAnswers();
+            return unsubscribe;
         }
-    }, [id]);
+    }, [id, user]);
 
     const handlePostAnswer = async () => {
         if (!newAnswer.trim() || !user || !post) return;
@@ -116,6 +163,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 content: newAnswer,
                 date: serverTimestamp(),
                 upvotes: 0,
+                downvotes: 0,
                 authorId: user.uid,
                 isAccepted: false,
             });
@@ -126,7 +174,6 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
             const userDocRef = doc(db, "users", user.uid);
             batch.update(userDocRef, { points: increment(15) });
 
-            // Create notification for question author
             if (post.authorId && post.authorId !== user.uid) {
                 const questionAuthorDoc = await getDoc(doc(db, 'users', post.authorId));
                 if (questionAuthorDoc.exists() && questionAuthorDoc.data().notificationPreferences?.answersOnQuestions) {
@@ -144,86 +191,132 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
             await batch.commit();
 
             setNewAnswer("");
-            fetchPostAndAnswers();
         } catch (error) {
             console.error("Error adding document: ", error);
         }
     };
     
-    const handleUpvoteQuestion = async () => {
+   const handlePostVote = async (voteType: 'up' | 'down') => {
         if (!user) {
-            toast({
-                variant: "destructive",
-                title: "Login Required",
-                description: "You must be logged in to upvote.",
-            });
+            toast({ variant: "destructive", title: "Login Required" });
+            return;
+        }
+        if (!post || user.uid === post.authorId) {
+            toast({ variant: "destructive", description: "You cannot vote on your own question." });
             return;
         }
 
-        if (user.uid === post?.authorId) {
-            toast({
-                variant: "destructive",
-                description: "You cannot upvote your own question.",
-            });
-            return;
-        }
+        const postRef = doc(db, "questions", id);
+        const userVoteRef = doc(db, "users", user.uid, "votes", `question-${id}`);
+        const authorRef = doc(db, "users", post.authorId);
 
         try {
-            const questionRef = doc(db, "questions", id);
-            await updateDoc(questionRef, {
-                upvotes: increment(1)
+            await runTransaction(db, async (transaction) => {
+                const userVoteDoc = await transaction.get(userVoteRef);
+                const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
+                let postUpdate: any = {};
+                let pointsChange = 0;
+
+                if (currentVote === voteType) {
+                    transaction.delete(userVoteRef);
+                    if (voteType === 'up') {
+                        postUpdate.upvotes = increment(-1);
+                        pointsChange = -2;
+                    } else {
+                        postUpdate.downvotes = increment(-1);
+                    }
+                    setPostUserVote(null);
+                } else {
+                    transaction.set(userVoteRef, { type: voteType });
+                    if (currentVote === 'up') {
+                        postUpdate.upvotes = increment(-1);
+                        pointsChange = -2;
+                    } else if (currentVote === 'down') {
+                        postUpdate.downvotes = increment(-1);
+                    }
+
+                    if (voteType === 'up') {
+                        postUpdate.upvotes = increment(1);
+                        pointsChange += 2;
+                    } else {
+                        postUpdate.downvotes = increment(1);
+                    }
+                    setPostUserVote(voteType);
+                }
+
+                transaction.update(postRef, postUpdate);
+                if (pointsChange !== 0) {
+                    transaction.update(authorRef, { points: increment(pointsChange) });
+                }
             });
-
-            if (post?.authorId) {
-                const authorRef = doc(db, "users", post.authorId);
-                await updateDoc(authorRef, {
-                    points: increment(2) 
-                });
-            }
-
-            fetchPostAndAnswers();
         } catch (error) {
-            console.error("Error upvoting question: ", error);
+            console.error(`Error ${voteType}ing post:`, error);
+            toast({ variant: "destructive", title: "Error", description: "Your vote could not be recorded." });
         }
     };
 
-
-    const handleUpvoteAnswer = async (answer: Answer) => {
+    const handleAnswerVote = async (answer: Answer, voteType: 'up' | 'down') => {
         if (!user) {
-            toast({
-                variant: "destructive",
-                title: "Login Required",
-                description: "You must be logged in to upvote.",
-            });
+            toast({ variant: "destructive", title: "Login Required" });
             return;
         }
-
         if (user.uid === answer.authorId) {
-             toast({
-                variant: "destructive",
-                description: "You cannot upvote your own answer.",
-            });
+            toast({ variant: "destructive", description: "You cannot vote on your own answer." });
             return;
         }
 
+        const answerRef = doc(db, "questions", id, "answers", answer.id);
+        const userVoteRef = doc(db, "users", user.uid, "votes", `answer-${answer.id}`);
+        const authorRef = doc(db, "users", answer.authorId);
+
         try {
-            const answerRef = doc(db, "questions", id, "answers", answer.id);
-            await updateDoc(answerRef, {
-                upvotes: increment(1)
+            await runTransaction(db, async (transaction) => {
+                const userVoteDoc = await transaction.get(userVoteRef);
+                const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
+                let answerUpdate: any = {};
+                let pointsChange = 0;
+
+                const optimisticVotes = { ...userVotes };
+
+                if (currentVote === voteType) {
+                    transaction.delete(userVoteRef);
+                    if (voteType === 'up') {
+                        answerUpdate.upvotes = increment(-1);
+                        pointsChange = -5;
+                    } else {
+                        answerUpdate.downvotes = increment(-1);
+                    }
+                    optimisticVotes[answer.id] = null;
+                } else {
+                    transaction.set(userVoteRef, { type: voteType });
+                    if (currentVote === 'up') {
+                        answerUpdate.upvotes = increment(-1);
+                        pointsChange = -5;
+                    } else if (currentVote === 'down') {
+                        answerUpdate.downvotes = increment(-1);
+                    }
+
+                    if (voteType === 'up') {
+                        answerUpdate.upvotes = increment(1);
+                        pointsChange += 5;
+                    } else {
+                        answerUpdate.downvotes = increment(1);
+                    }
+                    optimisticVotes[answer.id] = voteType;
+                }
+
+                setUserVotes(optimisticVotes);
+                transaction.update(answerRef, answerUpdate);
+                if (pointsChange !== 0 && answer.authorId) {
+                    transaction.update(authorRef, { points: increment(pointsChange) });
+                }
             });
-
-            if (answer.authorId) {
-                const authorRef = doc(db, "users", answer.authorId);
-                await updateDoc(authorRef, {
-                    points: increment(5)
-                });
-            }
-
-            fetchPostAndAnswers(); 
         } catch (error) {
-            console.error("Error upvoting answer: ", error);
+            console.error(`Error ${voteType}ing answer:`, error);
+            toast({ variant: "destructive", title: "Error", description: "Your vote could not be recorded." });
         }
     };
+
 
      const handleAcceptAnswer = async (answerToAccept: Answer) => {
         if (!user || user.uid !== post?.authorId) return;
@@ -233,25 +326,30 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         answers.forEach(answer => {
             const answerRef = doc(db, "questions", id, "answers", answer.id);
             if (answer.id === answerToAccept.id) {
-                batch.update(answerRef, { isAccepted: true });
+                 batch.update(answerRef, { isAccepted: !answer.isAccepted }); // Toggle accept
             } else if (answer.isAccepted) {
-                batch.update(answerRef, { isAccepted: false });
+                batch.update(answerRef, { isAccepted: false }); // Un-accept other
             }
         });
 
-        // Award points to the answer author
-        if (answerToAccept.authorId) {
-            const authorRef = doc(db, "users", answerToAccept.authorId);
-            batch.update(authorRef, { points: increment(25) });
+        const answerAuthorRef = doc(db, "users", answerToAccept.authorId);
+        const questionAuthorRef = doc(db, "users", post.authorId);
+
+        // if we are accepting the answer
+        if (!answerToAccept.isAccepted) {
+             batch.update(answerAuthorRef, { points: increment(25) });
+             batch.update(questionAuthorRef, { points: increment(5) }); // Bonus for picking an answer
+        } else { // if we are un-accepting
+            batch.update(answerAuthorRef, { points: increment(-25) });
+            batch.update(questionAuthorRef, { points: increment(-5) });
         }
         
         try {
             await batch.commit();
             toast({
-                title: "Answer Accepted!",
-                description: "You've marked this answer as the solution.",
+                title: answerToAccept.isAccepted ? "Answer Un-accepted" : "Answer Accepted!",
+                description: answerToAccept.isAccepted ? "You've removed the solution mark." : "You've marked this answer as the solution.",
             });
-            fetchPostAndAnswers();
         } catch (error) {
             console.error("Error accepting answer: ", error);
              toast({
@@ -324,10 +422,13 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                     <p className="whitespace-pre-wrap">{post.content}</p>
                 </CardContent>
                  <CardFooter className="flex justify-end">
-                    <Button variant="ghost" size="sm" onClick={handleUpvoteQuestion}>
-                        <ThumbsUp className="mr-2 h-4 w-4" />
-                        {post.upvotes || 0}
-                    </Button>
+                     <VoteButtons
+                        upvotes={post.upvotes || 0}
+                        downvotes={post.downvotes || 0}
+                        onUpvote={() => handlePostVote('up')}
+                        onDownvote={() => handlePostVote('down')}
+                        userVote={postUserVote}
+                     />
                 </CardFooter>
             </Card>
 
@@ -364,16 +465,19 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                             </div>
                         </CardHeader>
                          <CardFooter className="flex justify-end gap-2">
-                             {user?.uid === post.authorId && !answer.isAccepted && (
+                             {user?.uid === post.authorId && (
                                 <Button variant="outline" size="sm" onClick={() => handleAcceptAnswer(answer)}>
                                     <CheckCircle className="mr-2 h-4 w-4" />
-                                    Accept
+                                    {answer.isAccepted ? 'Unaccept' : 'Accept'}
                                 </Button>
                              )}
-                            <Button variant="ghost" size="sm" onClick={() => handleUpvoteAnswer(answer)}>
-                                <ThumbsUp className="mr-2 h-4 w-4" />
-                                {answer.upvotes || 0}
-                            </Button>
+                            <VoteButtons
+                                upvotes={answer.upvotes || 0}
+                                downvotes={answer.downvotes || 0}
+                                onUpvote={() => handleAnswerVote(answer, 'up')}
+                                onDownvote={() => handleAnswerVote(answer, 'down')}
+                                userVote={userVotes[answer.id]}
+                           />
                         </CardFooter>
                     </Card>
                 ))}
@@ -390,6 +494,10 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                     <Button onClick={handlePostAnswer} disabled={!user}>Post Answer</Button>
                 </CardFooter>
             </Card>
+
+            <CommentsSection contentId={id} contentType="question" contentAuthorId={post.authorId} />
         </div>
     )
 }
+
+    

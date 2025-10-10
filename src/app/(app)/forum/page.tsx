@@ -13,9 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 
 
 interface ForumPostTag {
@@ -34,6 +32,7 @@ interface ForumPost {
     views: number;
     replies: number;
     upvotes: number;
+    downvotes: number;
     date: any;
 }
 
@@ -41,6 +40,7 @@ export default function ForumPage() {
     const [allPosts, setAllPosts] = useState<ForumPost[]>([]);
     const [filteredPosts, setFilteredPosts] = useState<ForumPost[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
+    const [sortOrder, setSortOrder] = useState("newest");
     
     const [selectedClass, setSelectedClass] = useState("");
     const [availableUnits, setAvailableUnits] = useState<string[]>([]);
@@ -72,8 +72,21 @@ export default function ForumPage() {
                 )
             );
         }
-        setFilteredPosts(posts);
-    }, [searchTerm, activeFilters, allPosts]);
+
+        posts.sort((a, b) => {
+            if (sortOrder === "newest") {
+                return (b.date?.seconds || 0) - (a.date?.seconds || 0);
+            }
+            if (sortOrder === "popular") {
+                const scoreA = (a.upvotes || 0) - (a.downvotes || 0);
+                const scoreB = (b.upvotes || 0) - (b.downvotes || 0);
+                return scoreB - scoreA;
+            }
+            return 0;
+        });
+
+        setFilteredPosts([...posts]);
+    }, [searchTerm, activeFilters, allPosts, sortOrder]);
     
      useEffect(() => {
         if (selectedClass) {
@@ -119,8 +132,17 @@ export default function ForumPage() {
       </div>
       <Card>
           <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex-1">
+              <div className="flex items-center gap-4 flex-1">
                 <Input placeholder="Search by question title..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                 <Select value={sortOrder} onValueChange={setSortOrder}>
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="newest">Newest</SelectItem>
+                        <SelectItem value="popular">Most Popular</SelectItem>
+                    </SelectContent>
+                </Select>
               </div>
               <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
                     <Select value={selectedClass} onValueChange={setSelectedClass}>
@@ -188,7 +210,7 @@ export default function ForumPage() {
                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <div className="flex items-center gap-1">
                                 <ThumbsUp className="h-4 w-4" />
-                                {post.upvotes || 0}
+                                {(post.upvotes || 0) - (post.downvotes || 0)}
                             </div>
                             <div className="flex items-center gap-1">
                                 <MessageSquare className="h-4 w-4" />
@@ -218,3 +240,5 @@ export default function ForumPage() {
     </div>
   )
 }
+
+    

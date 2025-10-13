@@ -61,12 +61,11 @@ export default function LandingPage() {
                 </div>
               </div>
               <Image
-                src="https://placehold.co/600x600.png"
+                src="/logo-icon.png"
                 width="600"
                 height="600"
-                alt="Students collaborating"
-                data-ai-hint="students collaborating"
-                className="mx-auto aspect-square overflow-hidden rounded-xl object-cover"
+                alt="opendesk hero icon"
+                className="mx-auto aspect-square overflow-hidden rounded-xl object-contain"
               />
             </div>
           </div>
@@ -129,7 +128,7 @@ export default function LandingPage() {
                   <p className="mb-4">"This app is a game-changer. The AI summaries save me hours of review time before exams."</p>
                   <div className="flex items-center gap-4">
                     <Avatar>
-                      <AvatarImage src="https://placehold.co/40x40.png" data-ai-hint="woman smiling" />
+                      <AvatarImage src="https://picsum.photos/seed/1/40/40" data-ai-hint="woman smiling" />
                       <AvatarFallback>JD</AvatarFallback>
                     </Avatar>
                     <div>
@@ -144,7 +143,7 @@ export default function LandingPage() {
                   <p className="mb-4">"The rewards system actually makes studying fun. I'm more motivated than ever to participate."</p>
                   <div className="flex items-center gap-4">
                     <Avatar>
-                      <AvatarImage src="https://placehold.co/40x40.png" data-ai-hint="man smiling" />
+                      <AvatarImage src="https://picsum.photos/seed/2/40/40" data-ai-hint="man smiling" />
                       <AvatarFallback>SM</AvatarFallback>
                     </Avatar>
                     <div>

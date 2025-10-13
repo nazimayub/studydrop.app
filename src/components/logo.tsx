@@ -1,6 +1,6 @@
+
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { BrainCircuit } from 'lucide-react';
 
 interface LogoProps {
     variant?: 'default' | 'icon';

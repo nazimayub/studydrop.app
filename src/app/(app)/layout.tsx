@@ -60,9 +60,9 @@ function AppLayoutContent({
           <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
             <Link
               href="/dashboard"
-              className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
+              className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
             >
-              <BrainCircuit className="h-4 w-4 transition-all group-hover:scale-110" />
+              <Logo variant="icon" />
               <span className="sr-only">opendesk</span>
             </Link>
             <AppNav />
@@ -98,7 +98,7 @@ function AppLayoutContent({
                   href="#"
                   className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
                 >
-                  <BrainCircuit className="h-5 w-5 transition-all group-hover:scale-110" />
+                  <Logo variant="icon"/>
                   <span className="sr-only">opendesk</span>
                 </Link>
                 <AppNav isMobile={true}/>

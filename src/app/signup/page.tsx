@@ -134,7 +134,7 @@ export default function SignupPage() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-secondary/50 p-4">
       <div className="mb-8">
         <Link href="/">
-           <Logo />
+           <Logo className="w-48" />
         </Link>
       </div>
       <Card className="mx-auto max-w-sm w-full">

@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Bot, BrainCircuit, NotebookText, Users } from 'lucide-react';
+import { Activity, NotebookText, UploadCloud, Users } from 'lucide-react';
 import { Logo } from '@/components/logo';
 
 export default function LandingPage() {
@@ -15,7 +15,7 @@ export default function LandingPage() {
           <Logo />
           <span className="sr-only">opendesk</span>
         </Link>
-        <nav className="ml-auto flex gap-4 sm:gap-6">
+        <nav className="ml-auto flex items-center gap-4 sm:gap-6">
           <Link href="#features" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
             Features
           </Link>
@@ -31,23 +31,24 @@ export default function LandingPage() {
         </nav>
       </header>
       <main className="flex-1">
-        <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-secondary/50">
+        <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 relative overflow-hidden">
+          <div className="absolute inset-0 -z-10 animated-gradient bg-gradient-to-r from-blue-200 via-cyan-200 to-teal-200 dark:from-blue-900/50 dark:via-cyan-900/50 dark:to-teal-900/50"></div>
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center space-y-8 text-center">
               <Image
                 src="/logo-icon.png"
-                width="500"
-                height="500"
+                width="144"
+                height="144"
                 alt="opendesk hero icon"
                 className="mx-auto"
                 priority
               />
               <div className="space-y-2">
                 <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline">
-                  Unlock Your Full Potential with opendesk
+                  Never Fall Behind in Class Again
                 </h1>
                 <p className="max-w-[600px] text-muted-foreground md:text-xl mx-auto">
-                  Our AI-powered platform helps you learn smarter, not harder. Manage notes, get instant summaries, and collaborate with peers.
+                  Study Buddy helps you connect with classmates, share notes, and master your courses together. Stay on top of your classes, effortlessly.
                 </p>
               </div>
               <div className="flex flex-col gap-2 min-[400px]:flex-row">
@@ -76,18 +77,18 @@ export default function LandingPage() {
                 <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm">Key Features</div>
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Everything You Need to Succeed</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  From intelligent note summarization to a gamified learning experience, we've got you covered.
+                  From collaborative forums to seamless note organization, we've got you covered.
                 </p>
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3 lg:max-w-none mt-12">
+            <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-4 lg:max-w-none mt-12">
               <div className="grid gap-1 text-center">
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
-                  <BrainCircuit className="h-8 w-8 text-primary" />
+                  <Activity className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold font-headline">A Note Summarizer</h3>
+                <h3 className="text-xl font-bold font-headline">Catch-up Feed</h3>
                 <p className="text-sm text-muted-foreground">
-                  Instantly get concise summaries of your notes, with clear reasoning, to review key concepts at a glance.
+                  See the most recent notes and questions for your classes in a centralized feed so you're always in the loop.
                 </p>
               </div>
               <div className="grid gap-1 text-center">
@@ -97,6 +98,15 @@ export default function LandingPage() {
                 <h3 className="text-xl font-bold font-headline">Notes Management</h3>
                 <p className="text-sm text-muted-foreground">
                   A comprehensive system to create, organize, filter, and annotate your study materials effectively.
+                </p>
+              </div>
+              <div className="grid gap-1 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
+                  <UploadCloud className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold font-headline">Media Uploader</h3>
+                <p className="text-sm text-muted-foreground">
+                   Easily upload any media type—images, documents, or videos—to enrich your notes and questions.
                 </p>
               </div>
               <div className="grid gap-1 text-center">
@@ -118,13 +128,13 @@ export default function LandingPage() {
                 Trusted by Students Worldwide
               </h2>
               <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                See how opendesk is transforming the way students learn and achieve their academic goals.
+                See how Study Buddy is transforming the way students learn and achieve their academic goals.
               </p>
             </div>
             <div className="mx-auto w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 pt-12">
                <Card>
                 <CardContent className="pt-6">
-                  <p className="mb-4">"This app is a game-changer. The AI summaries save me hours of review time before exams."</p>
+                  <p className="mb-4">"This app is a game-changer. The community forum saved me hours of frustration before exams."</p>
                   <div className="flex items-center gap-4">
                     <Avatar>
                       <AvatarImage src="https://picsum.photos/seed/1/40/40" data-ai-hint="woman smiling" />

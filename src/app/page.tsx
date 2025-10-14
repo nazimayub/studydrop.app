@@ -67,6 +67,7 @@ export default function LandingPage() {
                   height="400"
                   alt="opendesk hero icon"
                   className="mx-auto aspect-square overflow-hidden rounded-xl"
+                  priority
                 />
               </div>
             </div>

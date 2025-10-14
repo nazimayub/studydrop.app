@@ -39,7 +39,7 @@ export default function LandingPage() {
                 width="500"
                 height="500"
                 alt="opendesk hero icon"
-                className="mx-auto w-48 h-48 md:w-64 md:h-64"
+                className="mx-auto"
                 priority
               />
               <div className="space-y-2">
@@ -85,7 +85,7 @@ export default function LandingPage() {
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
                   <BrainCircuit className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold font-headline">AI Note Summarizer</h3>
+                <h3 className="text-xl font-bold font-headline">A Note Summarizer</h3>
                 <p className="text-sm text-muted-foreground">
                   Instantly get concise summaries of your notes, with clear reasoning, to review key concepts at a glance.
                 </p>

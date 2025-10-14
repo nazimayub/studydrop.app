@@ -11,7 +11,7 @@ export function Logo({ variant = 'default', className }: LogoProps) {
   if (variant === 'icon') {
     return (
         <div className={cn("flex items-center justify-center", className)}>
-            <Image src="/logo-icon.png" alt="opendesk icon" width={32} height={32} />
+            <Image src="/logo-icon.png" alt="opendesk icon" width={24} height={24} />
         </div>
     )
   }

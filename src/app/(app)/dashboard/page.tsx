@@ -13,6 +13,7 @@ import {
   Package2,
   Search,
   Users,
+  User as UserIcon,
 } from "lucide-react"
 import {
   collection,
@@ -71,55 +72,75 @@ export default function Dashboard() {
   const [user] = useAuthState(auth);
   const [stats, setStats] = useState({ notes: 0, questions: 0, answers: 0, points: 0 });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [enrolledClasses, setEnrolledClasses] = useState<string[]>([]);
 
   useEffect(() => {
-    const fetchAllActivity = async () => {
-        const toDate = (firebaseDate: any): Date => {
-            if (!firebaseDate) return new Date();
-            if (firebaseDate.toDate) return firebaseDate.toDate();
-            // Handle ISO string dates
-            if (typeof firebaseDate === 'string') return new Date(firebaseDate);
-            // Handle Firestore Timestamp seconds/nanoseconds
-            if (firebaseDate.seconds) return new Date(firebaseDate.seconds * 1000);
-            return new Date();
-        };
-
-        const notesCollection = collection(db, "notes");
-        const recentNotesQuery = query(notesCollection, where("isPublic", "==", true), orderBy("date", "desc"), limit(10));
-        const recentNotesSnapshot = await getDocs(recentNotesQuery);
-        const recentNotes = recentNotesSnapshot.docs.map(doc => ({
-            id: doc.id,
-            type: 'Note' as const,
-            title: doc.data().title,
-            author: doc.data().authorName,
-            authorId: doc.data().authorId,
-            date: toDate(doc.data().date),
-            tags: doc.data().tags || [],
-        }));
-
-        const questionsCollection = collection(db, "questions");
-        const recentQuestionsQuery = query(questionsCollection, orderBy("date", "desc"), limit(10));
-        const recentQuestionsSnapshot = await getDocs(recentQuestionsQuery);
-        const recentQuestions = recentQuestionsSnapshot.docs.map(doc => ({
-            id: doc.id,
-            type: 'Question' as const,
-            title: doc.data().title,
-            author: doc.data().author,
-            authorId: doc.data().authorId,
-            date: toDate(doc.data().date),
-            tags: doc.data().tags || [],
-        }));
-
-        const combinedActivity = [...recentNotes, ...recentQuestions]
-            .sort((a, b) => b.date.getTime() - a.date.getTime())
-            .slice(0, 10);
-        
-        setRecentActivity(combinedActivity);
-    };
-
-    fetchAllActivity();
-
     if (user) {
+        const userDocRef = doc(db, "users", user.uid);
+
+        const fetchAllActivity = async () => {
+            const userDocSnap = await getDoc(userDocRef);
+            const userData = userDocSnap.data();
+            const userEnrolledClasses = userData?.enrolledClasses || [];
+            setEnrolledClasses(userEnrolledClasses);
+
+            const toDate = (firebaseDate: any): Date => {
+                if (!firebaseDate) return new Date();
+                if (firebaseDate.toDate) return firebaseDate.toDate();
+                if (typeof firebaseDate === 'string') return new Date(firebaseDate);
+                if (firebaseDate.seconds) return new Date(firebaseDate.seconds * 1000);
+                return new Date();
+            };
+
+            const notesCollection = collection(db, "notes");
+            let recentNotesQuery = query(notesCollection, where("isPublic", "==", true), orderBy("date", "desc"), limit(10));
+            if (userEnrolledClasses.length > 0) {
+                 recentNotesQuery = query(notesCollection, where("isPublic", "==", true), where("tags", "array-contains-any", userEnrolledClasses.map(c => ({ class: c, topic: '' }))), orderBy("date", "desc"), limit(10));
+            }
+            const notesSnapshot = await getDocs(notesCollection);
+            const recentNotes = notesSnapshot.docs
+                .map(doc => ({
+                    id: doc.id,
+                    type: 'Note' as const,
+                    title: doc.data().title,
+                    author: doc.data().authorName,
+                    authorId: doc.data().authorId,
+                    date: toDate(doc.data().date),
+                    tags: doc.data().tags || [],
+                }))
+                .filter(note => {
+                    if (userEnrolledClasses.length === 0) return true;
+                    return note.tags?.some(tag => userEnrolledClasses.includes(typeof tag === 'string' ? tag : tag.class));
+                });
+
+
+            const questionsCollection = collection(db, "questions");
+            const questionsSnapshot = await getDocs(query(questionsCollection, orderBy("date", "desc"), limit(10)));
+            const recentQuestions = questionsSnapshot.docs
+                .map(doc => ({
+                    id: doc.id,
+                    type: 'Question' as const,
+                    title: doc.data().title,
+                    author: doc.data().author,
+                    authorId: doc.data().authorId,
+                    date: toDate(doc.data().date),
+                    tags: doc.data().tags || [],
+                }))
+                 .filter(question => {
+                    if (userEnrolledClasses.length === 0) return true;
+                    return question.tags?.some(tag => userEnrolledClasses.includes(typeof tag === 'string' ? tag : tag.class));
+                });
+
+
+            const combinedActivity = [...recentNotes, ...recentQuestions]
+                .sort((a, b) => b.date.getTime() - a.date.getTime())
+                .slice(0, 10);
+            
+            setRecentActivity(combinedActivity);
+        };
+        
+        fetchAllActivity();
+
         const unsubscribes: (() => void)[] = [];
 
         const notesQuery = query(collection(db, "notes"), where("authorId", "==", user.uid));
@@ -136,11 +157,12 @@ export default function Dashboard() {
         unsubscribes.push(onSnapshot(answersQuery, (snapshot) => {
             setStats(prev => ({ ...prev, answers: snapshot.size }));
         }));
-
-        const userDocRef = doc(db, "users", user.uid);
+        
         unsubscribes.push(onSnapshot(userDocRef, (doc) => {
             if (doc.exists()) {
-                setStats(prev => ({ ...prev, points: doc.data().points || 0 }));
+                const userData = doc.data();
+                setStats(prev => ({ ...prev, points: userData.points || 0 }));
+                setEnrolledClasses(userData.enrolledClasses || []);
             }
         }));
 
@@ -151,6 +173,10 @@ export default function Dashboard() {
   return (
     <div className="flex min-h-screen w-full flex-col">
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="mb-4">
+            <h1 className="text-3xl font-bold font-headline">Glad to see you, {user?.displayName?.split(' ')[0] || 'User'}!</h1>
+            <p className="text-muted-foreground">Here's what's happening in your community.</p>
+        </div>
         <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -209,9 +235,12 @@ export default function Dashboard() {
           <Card className="xl:col-span-2">
             <CardHeader className="flex flex-row items-center">
               <div className="grid gap-2">
-                <CardTitle>Recent Community Activity</CardTitle>
+                <CardTitle>Catch Up Feed</CardTitle>
                 <CardDescription>
-                  Recent notes and questions from all students.
+                  {enrolledClasses.length > 0
+                    ? "Recent notes and questions from your classes."
+                    : "Recent notes and questions from all classes. Add classes in your account to filter this feed."
+                  }
                 </CardDescription>
               </div>
               <Button asChild size="sm" className="ml-auto gap-1">
@@ -279,6 +308,9 @@ export default function Dashboard() {
                <Link href="/forum/new">
                 <Button variant="outline" className="w-full">Ask a Question</Button>
                </Link>
+                <Link href="/account">
+                <Button variant="outline" className="w-full"><UserIcon className="mr-2 h-4 w-4" /> My Account</Button>
+               </Link>
             </CardContent>
           </Card>
         </div>
@@ -286,3 +318,5 @@ export default function Dashboard() {
     </div>
   )
 }
+
+    

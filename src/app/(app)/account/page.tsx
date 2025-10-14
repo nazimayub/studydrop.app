@@ -7,6 +7,7 @@ import { auth, db, storage } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from "@/hooks/use-toast";
+import { apCourses } from "@/lib/ap-courses";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +16,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { Check, ChevronsUpDown, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+
 
 interface NotificationPreferences {
     commentsOnNotes: boolean;
@@ -29,6 +35,7 @@ interface UserData {
     bio: string;
     photoURL: string;
     notificationPreferences: NotificationPreferences;
+    enrolledClasses: string[];
 }
 
 export default function AccountPage() {
@@ -42,10 +49,12 @@ export default function AccountPage() {
             commentsOnNotes: true,
             answersOnQuestions: true,
             repliesToComments: true,
-        }
+        },
+        enrolledClasses: [],
     });
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const { toast } = useToast();
+    const [open, setOpen] = useState(false)
 
     useEffect(() => {
         if (user) {
@@ -63,7 +72,8 @@ export default function AccountPage() {
                             commentsOnNotes: true,
                             answersOnQuestions: true,
                             repliesToComments: true,
-                        }
+                        },
+                        enrolledClasses: data.enrolledClasses || [],
                     });
                 }
             };
@@ -113,6 +123,7 @@ export default function AccountPage() {
                 bio: userData.bio,
                 photoURL: photoURL,
                 notificationPreferences: userData.notificationPreferences,
+                enrolledClasses: userData.enrolledClasses,
             }, { merge: true });
 
             toast({
@@ -155,12 +166,23 @@ export default function AccountPage() {
         }
         return "OD";
     }
+    
+    const handleClassToggle = (courseName: string) => {
+        setUserData(prev => {
+            const currentlyEnrolled = prev.enrolledClasses.includes(courseName);
+            if (currentlyEnrolled) {
+                return {...prev, enrolledClasses: prev.enrolledClasses.filter(c => c !== courseName)};
+            } else {
+                return {...prev, enrolledClasses: [...prev.enrolledClasses, courseName]};
+            }
+        });
+    };
 
   return (
     <div className="grid gap-6">
       <div>
         <h1 className="text-3xl font-bold font-headline">Account Settings</h1>
-        <p className="text-muted-foreground">Manage your profile and notification settings.</p>
+        <p className="text-muted-foreground">Manage your profile, classes, and notification settings.</p>
       </div>
        <Card>
         <CardHeader>
@@ -189,6 +211,65 @@ export default function AccountPage() {
             <Textarea id="bio" placeholder="Tell us a little bit about yourself" value={userData.bio} onChange={handleInputChange} />
           </div>
         </CardContent>
+      </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle>My Classes</CardTitle>
+                <CardDescription>Select the classes you are enrolled in to filter your 'Catch Up Feed' on the dashboard.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                 <Popover open={open} onOpenChange={setOpen}>
+                    <PopoverTrigger asChild>
+                        <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className="w-full justify-between"
+                        >
+                        {userData.enrolledClasses.length > 0 ? `${userData.enrolledClasses.length} class(es) selected` : "Select classes..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                            <CommandInput placeholder="Search classes..." />
+                            <CommandList>
+                                <CommandEmpty>No classes found.</CommandEmpty>
+                                <CommandGroup>
+                                    {apCourses.map((course) => (
+                                    <CommandItem
+                                        key={course.name}
+                                        value={course.name}
+                                        onSelect={(currentValue) => {
+                                           handleClassToggle(course.name)
+                                        }}
+                                    >
+                                        <Check
+                                            className={cn(
+                                                "mr-2 h-4 w-4",
+                                                userData.enrolledClasses.includes(course.name) ? "opacity-100" : "opacity-0"
+                                            )}
+                                        />
+                                        {course.name}
+                                    </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
+
+                <div className="flex flex-wrap gap-2">
+                    {userData.enrolledClasses.map(courseName => (
+                        <Badge key={courseName} variant="secondary">
+                            {courseName}
+                             <button className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2" onClick={() => handleClassToggle(courseName)}>
+                                <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                            </button>
+                        </Badge>
+                    ))}
+                </div>
+            </CardContent>
       </Card>
       <Card>
         <CardHeader>
@@ -223,3 +304,5 @@ export default function AccountPage() {
     </div>
   )
 }
+
+    

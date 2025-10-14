@@ -1,5 +1,52 @@
 
-export const apCourses = [
+export const courses = [
+  // High School
+  {
+    name: 'Algebra 1',
+    units: ['Unit 1: Foundations of Algebra', 'Unit 2: Solving Equations', 'Unit 3: Solving Inequalities', 'Unit 4: Functions', 'Unit 5: Linear Equations and Functions', 'Unit 6: Systems of Equations', 'Unit 7: Exponents and Polynomials', 'Unit 8: Factoring Polynomials', 'Unit 9: Quadratic Equations and Functions', 'Unit 10: Data Analysis']
+  },
+  {
+    name: 'Geometry',
+    units: ['Unit 1: Foundations of Geometry', 'Unit 2: Parallel and Perpendicular Lines', 'Unit 3: Transformations', 'Unit 4: Triangles', 'Unit 5: Quadrilaterals and Polygons', 'Unit 6: Circles', 'Unit 7: Right Triangles and Trigonometry', 'Unit 8: Area and Volume']
+  },
+  {
+    name: 'Biology',
+    units: ['Unit 1: Introduction to Biology', 'Unit 2: Chemistry of Life', 'Unit 3: Cell Structure and Function', 'Unit 4: Photosynthesis and Cellular Respiration', 'Unit 5: Cell Growth and Division', 'Unit 6: Genetics', 'Unit 7: Evolution', 'Unit 8: Ecology']
+  },
+  {
+    name: 'Chemistry',
+    units: ['Unit 1: Introduction to Chemistry', 'Unit 2: Matter and Change', 'Unit 3: Atomic Structure', 'Unit 4: The Periodic Table', 'Unit 5: Chemical Bonds', 'Unit 6: Chemical Reactions', 'Unit 7: Stoichiometry', 'Unit 8: States of Matter', 'Unit 9: Acids and Bases']
+  },
+  {
+    name: 'English 9',
+    units: ['Unit 1: Short Stories', 'Unit 2: Poetry', 'Unit 3: The Novel', 'Unit 4: Drama (Shakespeare)', 'Unit 5: Non-fiction and Argument', 'Unit 6: Research Paper']
+  },
+  {
+    name: 'World History',
+    units: ['Unit 1: Ancient Civilizations', 'Unit 2: The Middle Ages', 'Unit 3: Renaissance and Reformation', 'Unit 4: Age of Exploration', 'Unit 5: Age of Revolutions', 'Unit 6: Industrialization and Imperialism', 'Unit 7: World Wars', 'Unit 8: The Modern Era']
+  },
+  // College
+  {
+    name: 'Psychology 101',
+    units: ['Unit 1: Introduction and Research Methods', 'Unit 2: Biological Bases of Behavior', 'Unit 3: Sensation and Perception', 'Unit 4: Learning and Memory', 'Unit 5: Cognition and Intelligence', 'Unit 6: Motivation and Emotion', 'Unit 7: Developmental Psychology', 'Unit 8: Personality', 'Unit 9: Psychological Disorders and Treatment', 'Unit 10: Social Psychology']
+  },
+  {
+    name: 'Economics 101 (Macro)',
+    units: ['Unit 1: Basic Economic Concepts', 'Unit 2: Measuring Economic Performance', 'Unit 3: Aggregate Demand and Supply', 'Unit 4: Fiscal Policy', 'Unit 5: Money, Banking, and Monetary Policy', 'Unit 6: International Trade and Finance']
+  },
+  {
+    name: 'Economics 102 (Micro)',
+    units: ['Unit 1: Basic Economic Concepts', 'Unit 2: Supply and Demand', 'Unit 3: Consumer Theory', 'Unit 4: Theory of the Firm', 'Unit 5: Market Structures', 'Unit 6: Market Failures and Government Intervention']
+  },
+  {
+    name: 'Computer Science 101',
+    units: ['Unit 1: Introduction to Programming', 'Unit 2: Data Types and Variables', 'Unit 3: Control Flow (Conditionals and Loops)', 'Unit 4: Functions', 'Unit 5: Data Structures (Arrays, Lists)', 'Unit 6: Introduction to Algorithms', 'Unit 7: Object-Oriented Programming Concepts']
+  },
+  {
+    name: 'Sociology 101',
+    units: ['Unit 1: The Sociological Perspective', 'Unit 2: Culture', 'Unit 3: Socialization', 'Unit 4: Social Structure and Interaction', 'Unit 5: Deviance and Social Control', 'Unit 6: Social Stratification', 'Unit 7: Race and Ethnicity', 'Unit 8: Gender and Sexuality']
+  },
+  // AP Classes (keeping them as they are valuable)
   {
     name: 'AP Art History',
     units: [

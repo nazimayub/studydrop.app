@@ -6,7 +6,7 @@ import Link from "next/link";
 import { PlusCircle, MessageSquare, Eye, ThumbsUp, X } from "lucide-react";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase/firebase";
-import { apCourses } from "@/lib/ap-courses";
+import { courses } from "@/lib/ap-courses";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -90,7 +90,7 @@ export default function ForumPage() {
     
      useEffect(() => {
         if (selectedClass) {
-            const course = apCourses.find(c => c.name === selectedClass);
+            const course = courses.find(c => c.name === selectedClass);
             setAvailableUnits(course ? course.units : []);
             setSelectedUnit("");
         } else {
@@ -147,10 +147,10 @@ export default function ForumPage() {
               <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
                     <Select value={selectedClass} onValueChange={setSelectedClass}>
                         <SelectTrigger>
-                            <SelectValue placeholder="Filter by AP Class" />
+                            <SelectValue placeholder="Filter by Class" />
                         </SelectTrigger>
                         <SelectContent>
-                            {apCourses.map(course => (
+                            {courses.map(course => (
                                 <SelectItem key={course.name} value={course.name}>{course.name}</SelectItem>
                             ))}
                         </SelectContent>
@@ -240,5 +240,3 @@ export default function ForumPage() {
     </div>
   )
 }
-
-    

@@ -9,7 +9,7 @@ import { db, auth, storage } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { apCourses } from "@/lib/ap-courses";
+import { courses } from "@/lib/ap-courses";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,7 +43,7 @@ export default function NewNotePage() {
 
     useEffect(() => {
         if (selectedClass) {
-            const course = apCourses.find(c => c.name === selectedClass);
+            const course = courses.find(c => c.name === selectedClass);
             setAvailableUnits(course ? course.units : []);
             setSelectedUnit(""); // Reset unit when class changes
         } else {
@@ -155,13 +155,13 @@ export default function NewNotePage() {
                         </div>
                         <div className="flex items-end gap-2">
                              <div className="grid gap-2 flex-1">
-                                <Label htmlFor="class-select" className="text-xs">AP Class</Label>
+                                <Label htmlFor="class-select" className="text-xs">Class</Label>
                                 <Select value={selectedClass} onValueChange={setSelectedClass}>
                                     <SelectTrigger id="class-select">
-                                        <SelectValue placeholder="Select an AP Class" />
+                                        <SelectValue placeholder="Select a Class" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {apCourses.map(course => (
+                                        {courses.map(course => (
                                             <SelectItem key={course.name} value={course.name}>{course.name}</SelectItem>
                                         ))}
                                     </SelectContent>

@@ -7,7 +7,7 @@ import { auth, db, storage } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from "@/hooks/use-toast";
-import { apCourses } from "@/lib/ap-courses";
+import { courses } from "@/lib/ap-courses";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -236,7 +236,7 @@ export default function AccountPage() {
                             <CommandList>
                                 <CommandEmpty>No classes found.</CommandEmpty>
                                 <CommandGroup>
-                                    {apCourses.map((course) => (
+                                    {courses.map((course) => (
                                     <CommandItem
                                         key={course.name}
                                         value={course.name}
@@ -304,5 +304,3 @@ export default function AccountPage() {
     </div>
   )
 }
-
-    

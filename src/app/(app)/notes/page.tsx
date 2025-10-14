@@ -49,7 +49,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { db, auth } from "@/lib/firebase/firebase"
 import { Badge } from "@/components/ui/badge"
-import { apCourses } from "@/lib/ap-courses"
+import { courses } from "@/lib/ap-courses"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 
@@ -113,7 +113,7 @@ export default function NotesPage() {
 
      useEffect(() => {
         if (selectedClass) {
-            const course = apCourses.find(c => c.name === selectedClass);
+            const course = courses.find(c => c.name === selectedClass);
             setAvailableUnits(course ? course.units : []);
             setSelectedUnit("");
         } else {
@@ -198,10 +198,10 @@ export default function NotesPage() {
               <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
                     <Select value={selectedClass} onValueChange={setSelectedClass}>
                         <SelectTrigger>
-                            <SelectValue placeholder="Filter by AP Class" />
+                            <SelectValue placeholder="Filter by Class" />
                         </SelectTrigger>
                         <SelectContent>
-                            {apCourses.map(course => (
+                            {courses.map(course => (
                                 <SelectItem key={course.name} value={course.name}>{course.name}</SelectItem>
                             ))}
                         </SelectContent>

@@ -62,7 +62,7 @@ export default function LandingPage() {
               </div>
               <div className="flex justify-center">
                 <Image
-                  src="/logo-full.png"
+                  src="/logo-icon.png"
                   width="400"
                   height="400"
                   alt="opendesk hero icon"

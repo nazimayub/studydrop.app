@@ -18,7 +18,8 @@ export function Logo({ variant = 'default', className }: LogoProps) {
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <Image src="/logo-full.png" alt="opendesk logo" width={120} height={32} priority />
+      <Image src="/logo-icon.png" alt="opendesk icon" width={24} height={24} />
+      <span className="font-semibold">opendesk</span>
     </div>
   );
 }

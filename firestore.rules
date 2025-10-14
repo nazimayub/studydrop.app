@@ -12,66 +12,48 @@ service cloud.firestore {
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
-    
-    function isPublic() {
-      return resource.data.isPublic == true;
+
+    // Users can read any profile, but only write to their own.
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId);
+
+      // Users can read/write their own subcollections
+      match /{allSubcollections=**} {
+        allow read, write: if isOwner(userId);
+      }
     }
 
-    // Users
-    match /users/{userId} {
-      // Any signed in user can read a user's public profile
-      allow read: if isSignedIn();
-      // Only the user themselves can write to their own document
-      allow write: if isOwner(userId);
-      
-      // Notifications can only be read/written by the owner
-      match /notifications/{notificationId} {
-        allow read, write, delete: if isOwner(userId);
-      }
-      
-      // Votes can only be read/written by the owner
-      match /votes/{voteId} {
-         allow read, write, delete: if isOwner(userId);
-      }
-    }
-    
-    // Notes
+    // Notes can be read by anyone, but only created/updated/deleted by the author.
     match /notes/{noteId} {
-      // Anyone can read public notes, signed in users can read their own private notes
-      allow read: if isPublic() || (isSignedIn() && isOwner(resource.data.authorId));
-      // Signed in users can create notes
-      allow create: if isSignedIn() && isOwner(request.resource.data.authorId);
-      // Only the author can update/delete their own notes
-      allow update, delete: if isSignedIn() && isOwner(resource.data.authorId);
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn() && isOwner(request.resource.data.authorId);
       
-       // Comments on notes
+      // Comments on notes
       match /comments/{commentId} {
-        // Anyone can read comments on public notes
-        allow read: if get(/databases/$(database)/documents/notes/$(noteId)).data.isPublic == true;
-        // Any signed-in user can create a comment
-        allow create: if isSignedIn();
-        // Only the comment author can update or delete it
-        allow update, delete: if isSignedIn() && isOwner(resource.data.authorId);
+        allow read, create: if isSignedIn();
+        allow update, delete: if isSignedIn() && isOwner(request.resource.data.authorId);
       }
     }
-    
-    // Questions (Forum)
+
+    // Questions can be read by anyone, but only managed by the author (if not anonymous).
     match /questions/{questionId} {
-      // Anyone can read any question
-      allow read: if true;
-      // Signed in users can create questions
+      allow read: if isSignedIn();
       allow create: if isSignedIn();
-      // Only the author can update/delete their own questions
       allow update, delete: if isSignedIn() && isOwner(resource.data.authorId);
-      
+
       // Answers to questions
       match /answers/{answerId} {
-         // Anyone can read answers
-        allow read: if true;
-        // Any signed-in user can create an answer
-        allow create: if isSignedIn();
-        // Only the answer author can update/delete
-        allow update, delete: if isSignedIn() && isOwner(resource.data.authorId);
+        allow read, create: if isSignedIn();
+        // Only the answer author can edit/delete, only the question author can accept.
+        allow update: if isSignedIn() && (isOwner(request.resource.data.authorId) || isOwner(resource.data.authorId));
+        allow delete: if isSignedIn() && isOwner(request.resource.data.authorId);
+      }
+
+      // Comments on questions
+      match /comments/{commentId} {
+        allow read, create: if isSignedIn();
+        allow update, delete: if isSignedIn() && isOwner(request.resource.data.authorId);
       }
     }
   }

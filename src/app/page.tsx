@@ -48,7 +48,7 @@ export default function LandingPage() {
                   Never Fall Behind in Class Again
                 </h1>
                 <p className="max-w-[600px] text-muted-foreground md:text-xl mx-auto">
-                  Study Buddy helps you connect with classmates, share notes, and master your courses together. Stay on top of your classes, effortlessly.
+                  opendesk helps you connect with classmates, share notes, and master your courses together. Stay on top of your classes, effortlessly.
                 </p>
               </div>
               <div className="flex flex-col gap-2 min-[400px]:flex-row">
@@ -128,7 +128,7 @@ export default function LandingPage() {
                 Trusted by Students Worldwide
               </h2>
               <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                See how Study Buddy is transforming the way students learn and achieve their academic goals.
+                See how opendesk is transforming the way students learn and achieve their academic goals.
               </p>
             </div>
             <div className="mx-auto w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 pt-12">

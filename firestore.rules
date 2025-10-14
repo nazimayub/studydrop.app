@@ -1,60 +1,55 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    // Users can read any profile, but only write to their own.
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isOwner(userId);
+      allow read;
+      allow create: if request.auth.uid == userId;
+      allow update, delete: if request.auth.uid == userId;
 
-      // Users can read/write their own subcollections
-      match /{allSubcollections=**} {
-        allow read, write: if isOwner(userId);
+      // Allow users to manage their own votes
+      match /votes/{voteId} {
+        allow read, create, update, delete: if request.auth.uid == userId;
+      }
+
+      // Allow users to manage their own notifications
+      match /notifications/{notificationId} {
+          allow read, create, update, delete: if request.auth.uid == userId;
       }
     }
 
-    // Notes can be read by anyone, but only created/updated/deleted by the author.
     match /notes/{noteId} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if isSignedIn() && isOwner(request.resource.data.authorId);
+      allow read;
+      allow create, update: if request.auth.uid == request.resource.data.authorId;
+      allow delete: if resource.data.authorId == request.auth.uid;
       
-      // Comments on notes
       match /comments/{commentId} {
-        allow read, create: if isSignedIn();
-        allow update, delete: if isSignedIn() && isOwner(request.resource.data.authorId);
+        allow read, create;
+        allow update, delete: if request.auth.uid == resource.data.authorId || request.auth.uid == get(/databases/$(database)/documents/notes/$(noteId)).data.authorId;
       }
     }
 
-    // Questions can be read by anyone, but only managed by the author (if not anonymous).
     match /questions/{questionId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && isOwner(resource.data.authorId);
+      allow read;
+      allow create: if request.auth != null;
+      allow update: if request.auth.uid == resource.data.authorId;
+      allow delete: if request.auth.uid == resource.data.authorId;
 
-      // Answers to questions
       match /answers/{answerId} {
-        allow read, create: if isSignedIn();
-        // Only the answer author can edit/delete, only the question author can accept.
-        allow update: if isSignedIn() && (isOwner(request.resource.data.authorId) || isOwner(resource.data.authorId));
-        allow delete: if isSignedIn() && isOwner(request.resource.data.authorId);
+        allow read, create;
+        allow update, delete: if request.auth.uid == resource.data.authorId || request.auth.uid == get(/databases/$(database)/documents/questions/$(questionId)).data.authorId;
       }
 
-      // Comments on questions
       match /comments/{commentId} {
-        allow read, create: if isSignedIn();
-        allow update, delete: if isSignedIn() && isOwner(request.resource.data.authorId);
+        allow read, create;
+        allow update, delete: if request.auth.uid == resource.data.authorId || request.auth.uid == get(/databases/$(database)/documents/questions/$(questionId)).data.authorId;
       }
+    }
+
+    // Allow collection group queries for answers, required for user stats
+    match /{path=**}/answers/{answerId} {
+      allow read;
     }
   }
 }

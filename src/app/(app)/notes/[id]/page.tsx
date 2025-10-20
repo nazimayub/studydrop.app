@@ -92,7 +92,7 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
         await runTransaction(db, async (transaction) => {
             const userVoteDoc = await transaction.get(userVoteRef);
             const noteDoc = await transaction.get(noteRef);
-            const authorDoc = await transaction.get(authorRef); // Read the author's doc
+            const authorDoc = await transaction.get(authorRef); 
 
             if (!noteDoc.exists()) {
                 throw "Note does not exist!";
@@ -101,6 +101,7 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
                 throw "Author does not exist!";
             }
 
+            const currentPoints = authorDoc.data()?.points || 0;
             const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
             let noteUpdate: any = {};
             let pointsChange = 0;
@@ -136,7 +137,8 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
             
             transaction.update(noteRef, noteUpdate);
             if (pointsChange !== 0) {
-                transaction.update(authorRef, { points: increment(pointsChange) });
+                const newPoints = currentPoints + pointsChange;
+                transaction.update(authorRef, { points: newPoints });
             }
         });
 
@@ -225,3 +227,5 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
     </div>
   )
 }
+
+    

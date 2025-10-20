@@ -241,6 +241,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                     throw "Author does not exist!";
                 }
 
+                const currentPoints = authorDoc.data()?.points || 0;
                 const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
                 let postUpdate: any = {};
                 let pointsChange = 0;
@@ -274,7 +275,8 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
 
                 transaction.update(postRef, postUpdate);
                 if (pointsChange !== 0) {
-                    transaction.update(authorRef, { points: increment(pointsChange) });
+                    const newPoints = currentPoints + pointsChange;
+                    transaction.update(authorRef, { points: newPoints });
                 }
             });
         } catch (error) {
@@ -305,6 +307,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                     throw "Author does not exist!";
                 }
 
+                const currentPoints = authorDoc.data()?.points || 0;
                 const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
                 let answerUpdate: any = {};
                 let pointsChange = 0;
@@ -341,7 +344,8 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 setUserVotes(optimisticVotes);
                 transaction.update(answerRef, answerUpdate);
                 if (pointsChange !== 0 && answer.authorId) {
-                    transaction.update(authorRef, { points: increment(pointsChange) });
+                    const newPoints = currentPoints + pointsChange;
+                    transaction.update(authorRef, { points: newPoints });
                 }
             });
         } catch (error) {
@@ -554,3 +558,5 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         </div>
     )
 }
+
+    

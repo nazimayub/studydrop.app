@@ -558,3 +558,5 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         </div>
     )
 }
+
+    

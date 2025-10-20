@@ -208,6 +208,7 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
                     throw "Author does not exist!";
                 }
 
+                const currentPoints = authorDoc.data()?.points || 0;
                 const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
                 let commentUpdate: any = {};
                 let pointsChange = 0;
@@ -241,7 +242,8 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
                 
                 transaction.update(commentRef, commentUpdate);
                 if (pointsChange !== 0 && authorId) {
-                    transaction.update(authorRef, { points: increment(pointsChange) });
+                    const newPoints = currentPoints + pointsChange;
+                    transaction.update(authorRef, { points: newPoints });
                 }
             });
         } catch (error) {

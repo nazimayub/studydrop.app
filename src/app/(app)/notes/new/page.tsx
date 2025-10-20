@@ -1,8 +1,7 @@
-
 "use client"
 
 import { useState, useEffect } from "react";
-import { collection, addDoc, doc, getDocs } from "firebase/firestore";
+import { collection, addDoc, doc, runTransaction } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useRouter } from "next/navigation";
 import { db, auth, storage } from "@/lib/firebase/firebase";
@@ -89,26 +88,39 @@ export default function NewNotePage() {
         setIsLoading(true);
 
         try {
-            let attachmentURL = "";
-            let attachmentName = "";
-            if (attachment) {
-                const storageRef = ref(storage, `attachments/notes/${user.uid}/${Date.now()}_${attachment.name}`);
-                await uploadBytes(storageRef, attachment);
-                attachmentURL = await getDownloadURL(storageRef);
-                attachmentName = attachment.name;
-            }
+             let attachmentURL = "";
+             let attachmentName = "";
+             if (attachment) {
+                 const storageRef = ref(storage, `attachments/notes/${user.uid}/${Date.now()}_${attachment.name}`);
+                 await uploadBytes(storageRef, attachment);
+                 attachmentURL = await getDownloadURL(storageRef);
+                 attachmentName = attachment.name;
+             }
+             
+             await runTransaction(db, async (transaction) => {
+                const userDocRef = doc(db, "users", user.uid);
+                const userDoc = await transaction.get(userDocRef);
+                if (!userDoc.exists()) {
+                    throw "User does not exist!";
+                }
+                const newPoints = (userDoc.data().points || 0) + 10;
+                transaction.update(userDocRef, { points: newPoints });
 
-            await addDoc(collection(db, "notes"), {
-                title,
-                content,
-                tags,
-                date: new Date().toISOString(),
-                status: "Published",
-                authorId: user.uid,
-                authorName: user.displayName || "Anonymous",
-                isPublic: true,
-                attachmentURL,
-                attachmentName
+                const newNoteRef = doc(collection(db, "notes"));
+                transaction.set(newNoteRef, {
+                    title,
+                    content,
+                    tags,
+                    date: new Date().toISOString(),
+                    status: "Published",
+                    authorId: user.uid,
+                    authorName: user.displayName || "Anonymous",
+                    isPublic: true,
+                    upvotes: 0,
+                    downvotes: 0,
+                    attachmentURL,
+                    attachmentName
+                });
             });
             
             toast({
@@ -134,7 +146,7 @@ export default function NewNotePage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="font-headline text-3xl">Add New Note</CardTitle>
-                    <CardDescription>Fill out the form below to create a new note. All notes are public.</CardDescription>
+                    <CardDescription>Fill out the form below to create a new note. You'll earn 10 points for creating a public note!</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6">
                     <div className="grid gap-2">

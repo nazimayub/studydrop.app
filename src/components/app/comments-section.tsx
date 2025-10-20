@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react";
@@ -120,7 +119,8 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
         const batch = writeBatch(db);
         
         try {
-            const userDocSnap = await getDoc(doc(db, "users", user.uid));
+            const userDocRef = doc(db, "users", user.uid);
+            const userDocSnap = await getDoc(userDocRef);
             const authorName = user.displayName || `${userDocSnap.data()?.firstName} ${userDocSnap.data()?.lastName}`;
             const authorAvatar = user.photoURL || userDocSnap.data()?.photoURL || "";
             const authorFallback = (user.displayName?.charAt(0) || userDocSnap.data()?.firstName?.charAt(0) || '') + (user.displayName?.split(' ')[1]?.charAt(0) || userDocSnap.data()?.lastName?.charAt(0) || '');
@@ -147,9 +147,11 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
                 attachmentURL,
                 attachmentName,
             });
-
-            const userPointsRef = doc(db, "users", user.uid);
-            batch.update(userPointsRef, { points: increment(10) });
+            
+            if (userDocSnap.exists()) {
+                const newPoints = (userDocSnap.data().points || 0) + 2;
+                batch.update(userDocRef, { points: newPoints });
+            }
 
             if (contentAuthorId && contentAuthorId !== user.uid) {
                 const contentAuthorDoc = await getDoc(doc(db, 'users', contentAuthorId));
@@ -201,46 +203,46 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
                 const commentDoc = await transaction.get(commentRef);
                 const authorDoc = await transaction.get(authorRef);
 
-                if (!commentDoc.exists()) {
-                    throw "Comment does not exist!";
-                }
-                if (!authorDoc.exists()) {
-                    throw "Author does not exist!";
-                }
+                if (!commentDoc.exists()) throw "Comment does not exist!";
+                if (!authorDoc.exists()) throw "Author does not exist!";
 
                 const currentPoints = authorDoc.data()?.points || 0;
                 const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
-                let commentUpdate: any = {};
+                
                 let pointsChange = 0;
+                let upvoteIncrement = 0;
+                let downvoteIncrement = 0;
 
                 if (currentVote === voteType) {
-                    // Undoing vote
                     transaction.delete(userVoteRef);
                     if (voteType === 'up') {
-                        commentUpdate.upvotes = increment(-1);
-                        pointsChange = -2;
+                        upvoteIncrement = -1;
+                        pointsChange = -1;
                     } else {
-                        commentUpdate.downvotes = increment(-1);
+                        downvoteIncrement = -1;
                     }
                 } else {
-                    // New vote or changing vote
                     transaction.set(userVoteRef, { type: voteType });
                     if (currentVote === 'up') {
-                        commentUpdate.upvotes = increment(-1);
-                        pointsChange = -2;
+                        upvoteIncrement = -1;
+                        pointsChange = -1;
                     } else if (currentVote === 'down') {
-                        commentUpdate.downvotes = increment(-1);
+                        downvoteIncrement = -1;
                     }
 
                     if (voteType === 'up') {
-                        commentUpdate.upvotes = increment(1);
-                        pointsChange += 2;
+                        upvoteIncrement += 1;
+                        pointsChange += 1;
                     } else {
-                        commentUpdate.downvotes = increment(1);
+                        downvoteIncrement += 1;
                     }
                 }
                 
-                transaction.update(commentRef, commentUpdate);
+                transaction.update(commentRef, { 
+                    upvotes: increment(upvoteIncrement),
+                    downvotes: increment(downvoteIncrement)
+                });
+
                 if (pointsChange !== 0 && authorId) {
                     const newPoints = currentPoints + pointsChange;
                     transaction.update(authorRef, { points: newPoints });
@@ -358,5 +360,3 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
         </div>
     )
 }
-
-    

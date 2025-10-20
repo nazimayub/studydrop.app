@@ -1,9 +1,8 @@
-
 "use client"
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment, runTransaction } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, auth, storage } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -88,57 +87,58 @@ export default function NewQuestionPage() {
 
         setIsLoading(true);
 
-        let authorName = "Anonymous";
-        let authorFallback = "A";
-        let authorAvatar = "";
-
-        if (!isAnonymous) {
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            if (userDoc.exists()) {
-                const userData = userDoc.data();
-                authorName = `${userData.firstName} ${userData.lastName}`;
-                authorFallback = `${userData.firstName?.charAt(0) || ''}${userData.lastName?.charAt(0) || ''}`;
-                authorAvatar = userData.photoURL || "";
-            }
-        }
-        
-        let attachmentURL = "";
-        let attachmentName = "";
-        if (attachment) {
-            const storageRef = ref(storage, `attachments/questions/${user.uid}/${Date.now()}_${attachment.name}`);
-            await uploadBytes(storageRef, attachment);
-            attachmentURL = await getDownloadURL(storageRef);
-            attachmentName = attachment.name;
-        }
-
-
         try {
-            await addDoc(collection(db, "questions"), {
-                title,
-                tags,
-                content: description,
-                authorId: isAnonymous ? null : user.uid,
-                author: authorName,
-                avatar: authorAvatar,
-                fallback: authorFallback,
-                date: serverTimestamp(),
-                views: 0,
-                replies: 0,
-                upvotes: 0,
-                attachmentURL,
-                attachmentName,
-            });
+            await runTransaction(db, async (transaction) => {
+                let authorName = "Anonymous";
+                let authorFallback = "A";
+                let authorAvatar = "";
 
-            if (!isAnonymous) {
-                const userDocRef = doc(db, "users", user.uid);
-                await updateDoc(userDocRef, {
-                    points: increment(5)
+                if (!isAnonymous) {
+                    const userDocRef = doc(db, "users", user.uid);
+                    const userDoc = await transaction.get(userDocRef);
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        authorName = `${userData.firstName} ${userData.lastName}`;
+                        authorFallback = `${userData.firstName?.charAt(0) || ''}${userData.lastName?.charAt(0) || ''}`;
+                        authorAvatar = userData.photoURL || "";
+
+                        const newPoints = (userData.points || 0) + 5;
+                        transaction.update(userDocRef, { points: newPoints });
+                    }
+                }
+                
+                let attachmentURL = "";
+                let attachmentName = "";
+                if (attachment) {
+                    const storageRef = ref(storage, `attachments/questions/${user.uid}/${Date.now()}_${attachment.name}`);
+                    await uploadBytes(storageRef, attachment); // This should be outside the transaction
+                    attachmentURL = await getDownloadURL(storageRef);
+                    attachmentName = attachment.name;
+                }
+
+                const newQuestionRef = doc(collection(db, "questions"));
+                transaction.set(newQuestionRef, {
+                    title,
+                    tags,
+                    content: description,
+                    authorId: isAnonymous ? null : user.uid,
+                    author: authorName,
+                    avatar: authorAvatar,
+                    fallback: authorFallback,
+                    date: serverTimestamp(),
+                    views: 0,
+                    replies: 0,
+                    upvotes: 0,
+                    downvotes: 0,
+                    attachmentURL,
+                    attachmentName,
                 });
-            }
+            });
 
             router.push("/forum");
         } catch (error) {
             console.error("Error adding document: ", error);
+             toast({ variant: "destructive", title: "Error", description: "Could not post your question." });
         } finally {
             setIsLoading(false);
         }
@@ -149,7 +149,7 @@ export default function NewQuestionPage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="font-headline text-3xl">Ask a New Question</CardTitle>
-                    <CardDescription>Fill out the form below to post your question to the forum.</CardDescription>
+                    <CardDescription>Fill out the form below to post your question. You'll get 5 points for asking!</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6">
                     <div className="grid gap-2">

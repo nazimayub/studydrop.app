@@ -1,4 +1,3 @@
-
 "use client"
 import { useEffect, useState } from "react";
 import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, increment, writeBatch, runTransaction, query, onSnapshot, orderBy } from "firebase/firestore";
@@ -151,18 +150,6 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     const handlePostAnswer = async () => {
         if (!newAnswer.trim() || !user || !post) return;
 
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        let authorName = "Anonymous";
-        let authorFallback = "A";
-        let authorAvatar = "";
-
-        if (userDoc.exists()) {
-            const userData = userDoc.data();
-            authorName = `${userData.firstName} ${userData.lastName}`;
-            authorFallback = `${userData.firstName?.charAt(0) || ''}${userData.lastName?.charAt(0) || ''}`;
-            authorAvatar = userData.photoURL || "";
-        }
-
         try {
             const batch = writeBatch(db);
 
@@ -173,6 +160,22 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 await uploadBytes(storageRef, attachment);
                 attachmentURL = await getDownloadURL(storageRef);
                 attachmentName = attachment.name;
+            }
+            
+            const userDocRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userDocRef);
+            let authorName = "Anonymous";
+            let authorFallback = "A";
+            let authorAvatar = "";
+
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                authorName = `${userData.firstName} ${userData.lastName}`;
+                authorFallback = `${userData.firstName?.charAt(0) || ''}${userData.lastName?.charAt(0) || ''}`;
+                authorAvatar = userData.photoURL || "";
+                
+                const newPoints = (userData.points || 0) + 15;
+                batch.update(userDocRef, { points: newPoints });
             }
 
             const answerRef = doc(collection(db, "questions", id, "answers"));
@@ -192,9 +195,6 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
 
             const questionRef = doc(db, "questions", id);
             batch.update(questionRef, { replies: increment(1) });
-
-            const userDocRef = doc(db, "users", user.uid);
-            batch.update(userDocRef, { points: increment(15) });
 
             if (post.authorId && post.authorId !== user.uid) {
                 const questionAuthorDoc = await getDoc(doc(db, 'users', post.authorId));
@@ -224,7 +224,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
             toast({ variant: "destructive", title: "Login Required" });
             return;
         }
-        if (!post || user.uid === post.authorId) {
+        if (!post || !post.authorId || user.uid === post.authorId) {
             toast({ variant: "destructive", description: "You cannot vote on your own question." });
             return;
         }
@@ -236,44 +236,51 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         try {
             await runTransaction(db, async (transaction) => {
                 const userVoteDoc = await transaction.get(userVoteRef);
+                const postDoc = await transaction.get(postRef);
                 const authorDoc = await transaction.get(authorRef);
-                if (!authorDoc.exists()) {
-                    throw "Author does not exist!";
-                }
+                
+                if (!postDoc.exists()) throw "Post does not exist!";
+                if (!authorDoc.exists()) throw "Author does not exist!";
 
                 const currentPoints = authorDoc.data()?.points || 0;
                 const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
-                let postUpdate: any = {};
+                
                 let pointsChange = 0;
-
-                if (currentVote === voteType) {
+                let upvoteIncrement = 0;
+                let downvoteIncrement = 0;
+                
+                if (currentVote === voteType) { // Undoing vote
                     transaction.delete(userVoteRef);
                     if (voteType === 'up') {
-                        postUpdate.upvotes = increment(-1);
+                        upvoteIncrement = -1;
                         pointsChange = -2;
                     } else {
-                        postUpdate.downvotes = increment(-1);
+                        downvoteIncrement = -1;
                     }
                     setPostUserVote(null);
-                } else {
+                } else { // New vote or changing vote
                     transaction.set(userVoteRef, { type: voteType });
-                    if (currentVote === 'up') {
-                        postUpdate.upvotes = increment(-1);
+                    if (currentVote === 'up') { // Changing from up to down
+                        upvoteIncrement = -1;
                         pointsChange = -2;
-                    } else if (currentVote === 'down') {
-                        postUpdate.downvotes = increment(-1);
+                    } else if (currentVote === 'down') { // Changing from down to up
+                        downvoteIncrement = -1;
                     }
 
                     if (voteType === 'up') {
-                        postUpdate.upvotes = increment(1);
+                        upvoteIncrement += 1;
                         pointsChange += 2;
                     } else {
-                        postUpdate.downvotes = increment(1);
+                        downvoteIncrement += 1;
                     }
                     setPostUserVote(voteType);
                 }
 
-                transaction.update(postRef, postUpdate);
+                transaction.update(postRef, {
+                    upvotes: increment(upvoteIncrement),
+                    downvotes: increment(downvoteIncrement),
+                });
+
                 if (pointsChange !== 0) {
                     const newPoints = currentPoints + pointsChange;
                     transaction.update(authorRef, { points: newPoints });
@@ -302,47 +309,53 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         try {
             await runTransaction(db, async (transaction) => {
                 const userVoteDoc = await transaction.get(userVoteRef);
+                const answerDoc = await transaction.get(answerRef);
                 const authorDoc = await transaction.get(authorRef);
-                if (!authorDoc.exists()) {
-                    throw "Author does not exist!";
-                }
+                
+                if (!answerDoc.exists()) throw "Answer does not exist!";
+                if (!authorDoc.exists()) throw "Author does not exist!";
 
                 const currentPoints = authorDoc.data()?.points || 0;
                 const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
-                let answerUpdate: any = {};
+                
                 let pointsChange = 0;
-
+                let upvoteIncrement = 0;
+                let downvoteIncrement = 0;
                 const optimisticVotes = { ...userVotes };
 
                 if (currentVote === voteType) {
                     transaction.delete(userVoteRef);
                     if (voteType === 'up') {
-                        answerUpdate.upvotes = increment(-1);
+                        upvoteIncrement = -1;
                         pointsChange = -5;
                     } else {
-                        answerUpdate.downvotes = increment(-1);
+                        downvoteIncrement = -1;
                     }
                     optimisticVotes[answer.id] = null;
                 } else {
                     transaction.set(userVoteRef, { type: voteType });
                     if (currentVote === 'up') {
-                        answerUpdate.upvotes = increment(-1);
+                        upvoteIncrement = -1;
                         pointsChange = -5;
                     } else if (currentVote === 'down') {
-                        answerUpdate.downvotes = increment(-1);
+                        downvoteIncrement = -1;
                     }
 
                     if (voteType === 'up') {
-                        answerUpdate.upvotes = increment(1);
+                        upvoteIncrement += 1;
                         pointsChange += 5;
                     } else {
-                        answerUpdate.downvotes = increment(1);
+                        downvoteIncrement += 1;
                     }
                     optimisticVotes[answer.id] = voteType;
                 }
 
                 setUserVotes(optimisticVotes);
-                transaction.update(answerRef, answerUpdate);
+                transaction.update(answerRef, {
+                    upvotes: increment(upvoteIncrement),
+                    downvotes: increment(downvoteIncrement),
+                });
+                
                 if (pointsChange !== 0 && answer.authorId) {
                     const newPoints = currentPoints + pointsChange;
                     transaction.update(authorRef, { points: newPoints });
@@ -358,34 +371,61 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
      const handleAcceptAnswer = async (answerToAccept: Answer) => {
         if (!user || user.uid !== post?.authorId) return;
 
-        const batch = writeBatch(db);
-
-        answers.forEach(answer => {
-            const answerRef = doc(db, "questions", id, "answers", answer.id);
-            if (answer.id === answerToAccept.id) {
-                 batch.update(answerRef, { isAccepted: !answer.isAccepted }); // Toggle accept
-            } else if (answer.isAccepted) {
-                batch.update(answerRef, { isAccepted: false }); // Un-accept other
-            }
-        });
-
-        const answerAuthorRef = doc(db, "users", answerToAccept.authorId);
-        const questionAuthorRef = doc(db, "users", post.authorId);
-
-        // if we are accepting the answer
-        if (!answerToAccept.isAccepted) {
-             batch.update(answerAuthorRef, { points: increment(25) });
-             batch.update(questionAuthorRef, { points: increment(5) }); // Bonus for picking an answer
-        } else { // if we are un-accepting
-            batch.update(answerAuthorRef, { points: increment(-25) });
-            batch.update(questionAuthorRef, { points: increment(-5) });
-        }
-        
         try {
-            await batch.commit();
+            await runTransaction(db, async (transaction) => {
+                const isAccepting = !answerToAccept.isAccepted;
+
+                // Loop through all answers to handle toggling
+                for (const answer of answers) {
+                    const answerRef = doc(db, "questions", id, "answers", answer.id);
+                    if (answer.id === answerToAccept.id) {
+                        transaction.update(answerRef, { isAccepted: isAccepting });
+                    } else if (answer.isAccepted) {
+                        transaction.update(answerRef, { isAccepted: false });
+                    }
+                }
+
+                // Point calculation
+                const answerAuthorRef = doc(db, "users", answerToAccept.authorId);
+                const questionAuthorRef = doc(db, "users", post.authorId);
+
+                const answerAuthorDoc = await transaction.get(answerAuthorRef);
+                const questionAuthorDoc = await transaction.get(questionAuthorRef);
+
+                if (!answerAuthorDoc.exists() || !questionAuthorDoc.exists()) {
+                    throw new Error("User document not found");
+                }
+
+                let answererPoints = answerAuthorDoc.data().points || 0;
+                let questionerPoints = questionAuthorDoc.data().points || 0;
+                
+                // If there was a previously accepted answer by another user, revert their points
+                const previouslyAccepted = answers.find(a => a.isAccepted && a.id !== answerToAccept.id);
+                if (previouslyAccepted) {
+                     const prevAuthorRef = doc(db, "users", previouslyAccepted.authorId);
+                     const prevAuthorDoc = await transaction.get(prevAuthorRef);
+                     if (prevAuthorDoc.exists()) {
+                        const prevPoints = prevAuthorDoc.data().points || 0;
+                        transaction.update(prevAuthorRef, { points: prevPoints - 25 });
+                     }
+                }
+
+
+                if (isAccepting) {
+                    answererPoints += 25;
+                    questionerPoints += 5;
+                } else { // un-accepting
+                    answererPoints -= 25;
+                    questionerPoints -= 5;
+                }
+                
+                transaction.update(answerAuthorRef, { points: answererPoints });
+                transaction.update(questionAuthorRef, { points: questionerPoints });
+            });
+
             toast({
-                title: answerToAccept.isAccepted ? "Answer Un-accepted" : "Answer Accepted!",
-                description: answerToAccept.isAccepted ? "You've removed the solution mark." : "You've marked this answer as the solution.",
+                title: !answerToAccept.isAccepted ? "Answer Accepted!" : "Answer Un-accepted",
+                description: !answerToAccept.isAccepted ? "You've marked this answer as the solution." : "You've removed the solution mark.",
             });
         } catch (error) {
             console.error("Error accepting answer: ", error);
@@ -558,5 +598,3 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         </div>
     )
 }
-
-    

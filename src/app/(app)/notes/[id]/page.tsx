@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from "react"
@@ -50,8 +49,8 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
 
   const fetchNote = async () => {
     if (!id) return;
-    const noteDoc = doc(db, "notes", id);
-    const noteSnapshot = await getDoc(noteDoc);
+    const noteDocRef = doc(db, "notes", id);
+    const noteSnapshot = await getDoc(noteDocRef);
     if (noteSnapshot.exists()) {
         const noteData = noteSnapshot.data() as Note;
         setNote(noteData);
@@ -69,7 +68,28 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     if (id) {
-      fetchNote();
+        const noteDocRef = doc(db, "notes", id);
+        const unsubscribe = onSnapshot(noteDocRef, (noteSnapshot) => {
+             if (noteSnapshot.exists()) {
+                const noteData = noteSnapshot.data() as Note;
+                setNote(noteData);
+            }
+        });
+        return () => unsubscribe();
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (id && user) {
+      const userVoteDocRef = doc(db, "users", user.uid, "votes", `note-${id}`);
+      const unsubscribe = onSnapshot(userVoteDocRef, (voteSnapshot) => {
+        if (voteSnapshot.exists()) {
+          setUserVote(voteSnapshot.data().type);
+        } else {
+          setUserVote(null);
+        }
+      });
+      return () => unsubscribe();
     }
   }, [id, user]);
 
@@ -79,7 +99,7 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
         toast({ variant: "destructive", title: "Login Required" });
         return;
     }
-    if (!note || user.uid === note.authorId) {
+    if (!note || !note.authorId || user.uid === note.authorId) {
         toast({ variant: "destructive", description: "You cannot vote on your own note." });
         return;
     }
@@ -94,59 +114,55 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
             const noteDoc = await transaction.get(noteRef);
             const authorDoc = await transaction.get(authorRef); 
 
-            if (!noteDoc.exists()) {
-                throw "Note does not exist!";
-            }
-            if (!authorDoc.exists()) {
-                throw "Author does not exist!";
-            }
-
+            if (!noteDoc.exists()) throw "Note does not exist!";
+            if (!authorDoc.exists()) throw "Author does not exist!";
+            
             const currentPoints = authorDoc.data()?.points || 0;
             const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
-            let noteUpdate: any = {};
             let pointsChange = 0;
+            let upvoteIncrement = 0;
+            let downvoteIncrement = 0;
 
             if (currentVote === voteType) {
                 // Undoing vote
                 transaction.delete(userVoteRef);
                 if (voteType === 'up') {
-                    noteUpdate.upvotes = increment(-1);
+                    upvoteIncrement = -1;
                     pointsChange = -2;
                 } else {
-                    noteUpdate.downvotes = increment(-1);
+                    downvoteIncrement = -1;
                 }
-                setUserVote(null); // Optimistic update
             } else {
                 // New vote or changing vote
                 transaction.set(userVoteRef, { type: voteType });
                 if (currentVote === 'up') {
-                    noteUpdate.upvotes = increment(-1);
+                    upvoteIncrement = -1;
                     pointsChange = -2;
                 } else if (currentVote === 'down') {
-                    noteUpdate.downvotes = increment(-1);
+                    downvoteIncrement = -1;
                 }
 
                 if (voteType === 'up') {
-                    noteUpdate.upvotes = increment(1);
+                    upvoteIncrement += 1;
                     pointsChange += 2;
                 } else {
-                    noteUpdate.downvotes = increment(1);
+                    downvoteIncrement += 1;
                 }
-                 setUserVote(voteType); // Optimistic update
             }
             
-            transaction.update(noteRef, noteUpdate);
+            transaction.update(noteRef, { 
+                upvotes: increment(upvoteIncrement),
+                downvotes: increment(downvoteIncrement)
+            });
+
             if (pointsChange !== 0) {
                 const newPoints = currentPoints + pointsChange;
                 transaction.update(authorRef, { points: newPoints });
             }
         });
-
-        await fetchNote(); // Re-fetch to get the final state from the server
     } catch (error) {
         console.error(`Error ${voteType}ing note:`, error);
         toast({ variant: "destructive", title: "Error", description: "Your vote could not be recorded." });
-        await fetchNote(); // Fetch note to revert optimistic UI updates on error
     }
 };
 
@@ -227,5 +243,3 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
     </div>
   )
 }
-
-    

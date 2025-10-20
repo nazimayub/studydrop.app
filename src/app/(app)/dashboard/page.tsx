@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState } from "react";
@@ -65,7 +64,7 @@ interface RecentActivity {
     author: string;
     authorId?: string;
     date: Date;
-    tags?: NoteTag[] | string[];
+    tags?: NoteTag[];
 }
 
 export default function Dashboard() {
@@ -93,11 +92,7 @@ export default function Dashboard() {
             };
 
             const notesCollection = collection(db, "notes");
-            let recentNotesQuery = query(notesCollection, where("isPublic", "==", true), orderBy("date", "desc"), limit(10));
-            if (userEnrolledClasses.length > 0) {
-                 recentNotesQuery = query(notesCollection, where("isPublic", "==", true), where("tags", "array-contains-any", userEnrolledClasses.map(c => ({ class: c, topic: '' }))), orderBy("date", "desc"), limit(10));
-            }
-            const notesSnapshot = await getDocs(notesCollection);
+            const notesSnapshot = await getDocs(query(notesCollection, where("isPublic", "==", true), orderBy("date", "desc"), limit(10)));
             const recentNotes = notesSnapshot.docs
                 .map(doc => ({
                     id: doc.id,
@@ -110,7 +105,7 @@ export default function Dashboard() {
                 }))
                 .filter(note => {
                     if (userEnrolledClasses.length === 0) return true;
-                    return note.tags?.some(tag => userEnrolledClasses.includes(typeof tag === 'string' ? tag : tag.class));
+                    return note.tags?.some(tag => userEnrolledClasses.includes(tag.class));
                 });
 
 
@@ -128,7 +123,7 @@ export default function Dashboard() {
                 }))
                  .filter(question => {
                     if (userEnrolledClasses.length === 0) return true;
-                    return question.tags?.some(tag => userEnrolledClasses.includes(typeof tag === 'string' ? tag : tag.class));
+                    return question.tags?.some(tag => userEnrolledClasses.includes(tag.class));
                 });
 
 
@@ -272,7 +267,7 @@ export default function Dashboard() {
                             )}
                         </TableCell>
                         <TableCell>
-                             <Link href={activity.type === 'Note' ? `/notes/${activity.id}` : `/forum/${activity.id}`} className="hidden text-sm text-muted-foreground md:inline hover:underline">
+                             <Link href={activity.type === 'Note' ? `/notes/${activity.id}` : `/forum/${activity.id}`} className="font-medium hover:underline">
                                 {activity.title}
                             </Link>
                         </TableCell>
@@ -280,7 +275,7 @@ export default function Dashboard() {
                           <div className="flex flex-wrap gap-1">
                             {activity.tags?.map((tag, index) => (
                               <Badge key={index} variant="secondary">
-                                {typeof tag === 'string' ? tag : `${tag.class}: ${tag.topic}`}
+                                {`${tag.class}: ${tag.topic}`}
                               </Badge>
                             ))}
                           </div>
@@ -318,5 +313,3 @@ export default function Dashboard() {
     </div>
   )
 }
-
-    

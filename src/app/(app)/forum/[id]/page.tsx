@@ -236,6 +236,11 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         try {
             await runTransaction(db, async (transaction) => {
                 const userVoteDoc = await transaction.get(userVoteRef);
+                const authorDoc = await transaction.get(authorRef);
+                if (!authorDoc.exists()) {
+                    throw "Author does not exist!";
+                }
+
                 const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
                 let postUpdate: any = {};
                 let pointsChange = 0;
@@ -295,6 +300,11 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         try {
             await runTransaction(db, async (transaction) => {
                 const userVoteDoc = await transaction.get(userVoteRef);
+                const authorDoc = await transaction.get(authorRef);
+                if (!authorDoc.exists()) {
+                    throw "Author does not exist!";
+                }
+
                 const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
                 let answerUpdate: any = {};
                 let pointsChange = 0;

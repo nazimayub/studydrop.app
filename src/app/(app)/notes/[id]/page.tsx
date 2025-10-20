@@ -49,6 +49,7 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
   const { toast } = useToast();
 
   const fetchNote = async () => {
+    if (!id) return;
     const noteDoc = doc(db, "notes", id);
     const noteSnapshot = await getDoc(noteDoc);
     if (noteSnapshot.exists()) {
@@ -91,9 +92,13 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
         await runTransaction(db, async (transaction) => {
             const userVoteDoc = await transaction.get(userVoteRef);
             const noteDoc = await transaction.get(noteRef);
+            const authorDoc = await transaction.get(authorRef); // Read the author's doc
 
             if (!noteDoc.exists()) {
                 throw "Note does not exist!";
+            }
+            if (!authorDoc.exists()) {
+                throw "Author does not exist!";
             }
 
             const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;

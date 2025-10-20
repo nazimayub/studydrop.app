@@ -199,9 +199,13 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
             await runTransaction(db, async (transaction) => {
                 const userVoteDoc = await transaction.get(userVoteRef);
                 const commentDoc = await transaction.get(commentRef);
+                const authorDoc = await transaction.get(authorRef);
 
                 if (!commentDoc.exists()) {
                     throw "Comment does not exist!";
+                }
+                if (!authorDoc.exists()) {
+                    throw "Author does not exist!";
                 }
 
                 const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;

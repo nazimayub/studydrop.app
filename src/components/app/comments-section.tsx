@@ -3,7 +3,8 @@
 
 import { useState, useEffect } from "react";
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment, runTransaction, deleteDoc, collectionGroup, writeBatch } from "firebase/firestore";
-import { db, auth } from "@/lib/firebase/firebase";
+import { db, auth, storage } from "@/lib/firebase/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuthState } from "react-firebase-hooks/auth";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -12,8 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { VoteButtons } from "./vote-buttons";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Paperclip, File as FileIcon, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
@@ -27,6 +29,8 @@ interface Comment {
     date: any;
     upvotes: number;
     downvotes: number;
+    attachmentURL?: string;
+    attachmentName?: string;
 }
 
 interface UserVoteState {
@@ -45,6 +49,7 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
     const [comments, setComments] = useState<Comment[]>([]);
     const [userVotes, setUserVotes] = useState<UserVoteState>({});
     const [newComment, setNewComment] = useState("");
+    const [attachment, setAttachment] = useState<File | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
@@ -88,6 +93,12 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
         setShowDeleteDialog(true);
     };
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setAttachment(e.target.files[0]);
+        }
+    };
+
     const handleDeleteConfirm = async () => {
         if (!commentToDelete) return;
         try {
@@ -114,6 +125,15 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
             const authorAvatar = user.photoURL || userDocSnap.data()?.photoURL || "";
             const authorFallback = (user.displayName?.charAt(0) || userDocSnap.data()?.firstName?.charAt(0) || '') + (user.displayName?.split(' ')[1]?.charAt(0) || userDocSnap.data()?.lastName?.charAt(0) || '');
 
+            let attachmentURL = "";
+            let attachmentName = "";
+            if (attachment) {
+                const storageRef = ref(storage, `attachments/comments/${user.uid}/${Date.now()}_${attachment.name}`);
+                await uploadBytes(storageRef, attachment);
+                attachmentURL = await getDownloadURL(storageRef);
+                attachmentName = attachment.name;
+            }
+
             const newCommentRef = doc(collection(db, collectionName, contentId, "comments"));
             batch.set(newCommentRef, {
                 authorId: user.uid,
@@ -124,6 +144,8 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
                 date: serverTimestamp(),
                 upvotes: 0,
                 downvotes: 0,
+                attachmentURL,
+                attachmentName,
             });
 
             const userPointsRef = doc(db, "users", user.uid);
@@ -149,6 +171,7 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
 
             await batch.commit();
             setNewComment("");
+            setAttachment(null);
 
         } catch (error) {
             console.error("Error adding comment: ", error);
@@ -230,7 +253,7 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
                 <CardHeader>
                     <CardTitle className="font-headline">Leave a Comment</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="grid gap-4">
                     <Textarea
                         placeholder="Share your thoughts..."
                         rows={4}
@@ -238,9 +261,21 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
                         onChange={(e) => setNewComment(e.target.value)}
                         disabled={!user || isLoading}
                     />
+                    <div>
+                        <Input id="attachment-comment" type="file" onChange={handleFileChange} />
+                         {attachment && (
+                            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md">
+                                <FileIcon className="h-4 w-4" />
+                                <span>{attachment.name}</span>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => setAttachment(null)}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                 </CardContent>
                 <CardFooter>
-                    <Button onClick={handlePostComment} disabled={!user || isLoading || !newComment.trim()}>
+                    <Button onClick={handlePostComment} disabled={!user || isLoading || (!newComment.trim() && !attachment)}>
                         {isLoading ? "Posting..." : "Post Comment"}
                     </Button>
                 </CardFooter>
@@ -276,6 +311,16 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
                                     )}
                                 </div>
                                 <p className="mt-2 text-sm">{comment.content}</p>
+                                {comment.attachmentURL && (
+                                    <div className="mt-2">
+                                        <a href={comment.attachmentURL} target="_blank" rel="noopener noreferrer">
+                                            <Button variant="outline" size="sm">
+                                                <Paperclip className="mr-2 h-4 w-4" />
+                                                {comment.attachmentName || 'View Attachment'}
+                                            </Button>
+                                        </a>
+                                    </div>
+                                )}
                             </div>
                         </CardHeader>
                         <CardFooter className="flex justify-end pt-0">

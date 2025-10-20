@@ -2,7 +2,8 @@
 "use client"
 import { useEffect, useState } from "react";
 import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, increment, writeBatch, runTransaction, query, onSnapshot, orderBy } from "firebase/firestore";
-import { db, auth } from "@/lib/firebase/firebase";
+import { db, auth, storage } from "@/lib/firebase/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuthState } from "react-firebase-hooks/auth";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
@@ -11,11 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, ThumbsUp, Paperclip, ThumbsDown } from "lucide-react";
+import { CheckCircle, ThumbsUp, Paperclip, ThumbsDown, File as FileIcon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { VoteButtons } from "@/components/app/vote-buttons";
 import { CommentsSection } from "@/components/app/comments-section";
+import { Input } from "@/components/ui/input";
 
 
 interface PostTag {
@@ -49,6 +51,8 @@ interface Answer {
     upvotes: number;
     downvotes: number;
     isAccepted?: boolean;
+    attachmentURL?: string;
+    attachmentName?: string;
 }
 
 interface UserVoteState {
@@ -60,6 +64,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     const [post, setPost] = useState<Post | null>(null);
     const [answers, setAnswers] = useState<Answer[]>([]);
     const [newAnswer, setNewAnswer] = useState("");
+    const [attachment, setAttachment] = useState<File | null>(null);
     const [user] = useAuthState(auth);
     const { toast } = useToast();
     const [userVotes, setUserVotes] = useState<UserVoteState>({});
@@ -137,6 +142,12 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         }
     }, [id, user]);
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setAttachment(e.target.files[0]);
+        }
+    };
+
     const handlePostAnswer = async () => {
         if (!newAnswer.trim() || !user || !post) return;
 
@@ -155,6 +166,15 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         try {
             const batch = writeBatch(db);
 
+            let attachmentURL = "";
+            let attachmentName = "";
+            if (attachment) {
+                const storageRef = ref(storage, `attachments/answers/${user.uid}/${Date.now()}_${attachment.name}`);
+                await uploadBytes(storageRef, attachment);
+                attachmentURL = await getDownloadURL(storageRef);
+                attachmentName = attachment.name;
+            }
+
             const answerRef = doc(collection(db, "questions", id, "answers"));
             batch.set(answerRef, {
                 author: authorName,
@@ -166,6 +186,8 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 downvotes: 0,
                 authorId: user.uid,
                 isAccepted: false,
+                attachmentURL,
+                attachmentName
             });
 
             const questionRef = doc(db, "questions", id);
@@ -191,6 +213,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
             await batch.commit();
 
             setNewAnswer("");
+            setAttachment(null);
         } catch (error) {
             console.error("Error adding document: ", error);
         }
@@ -462,6 +485,16 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                                     )}
                                 </div>
                                 <p className="mt-2">{answer.content}</p>
+                                 {answer.attachmentURL && (
+                                    <div className="mt-4">
+                                        <a href={answer.attachmentURL} target="_blank" rel="noopener noreferrer">
+                                            <Button variant="outline" size="sm">
+                                                <Paperclip className="mr-2 h-4 w-4" />
+                                                {answer.attachmentName || 'View Attachment'}
+                                            </Button>
+                                        </a>
+                                    </div>
+                                )}
                             </div>
                         </CardHeader>
                          <CardFooter className="flex justify-end gap-2">
@@ -487,8 +520,20 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 <CardHeader>
                     <CardTitle className="font-headline">Your Answer</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="grid gap-4">
                     <Textarea placeholder="Type your answer here." rows={5} value={newAnswer} onChange={(e) => setNewAnswer(e.target.value)} />
+                    <div>
+                        <Input id="attachment-answer" type="file" onChange={handleFileChange} />
+                         {attachment && (
+                            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md">
+                                <FileIcon className="h-4 w-4" />
+                                <span>{attachment.name}</span>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => setAttachment(null)}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                 </CardContent>
                 <CardFooter>
                     <Button onClick={handlePostAnswer} disabled={!user}>Post Answer</Button>
@@ -499,5 +544,3 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         </div>
     )
 }
-
-    

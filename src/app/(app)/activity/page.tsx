@@ -9,13 +9,12 @@ import { courses } from "@/lib/courses";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { X } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ActivityTag {
   class: string;
@@ -37,6 +36,7 @@ export default function ActivityPage() {
     const [allActivity, setAllActivity] = useState<Activity[]>([]);
     const [filteredActivity, setFilteredActivity] = useState<Activity[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
+    const [activityType, setActivityType] = useState<'all' | 'notes' | 'questions'>('all');
     
     const [selectedClass, setSelectedClass] = useState("");
     const [availableUnits, setAvailableUnits] = useState<string[]>([]);
@@ -92,6 +92,11 @@ export default function ActivityPage() {
 
     useEffect(() => {
         let activity = allActivity;
+
+        if (activityType !== 'all') {
+            activity = activity.filter(item => item.type.toLowerCase().startsWith(activityType.slice(0, -1)));
+        }
+
         if (searchTerm) {
             activity = activity.filter(item => item.title.toLowerCase().includes(searchTerm.toLowerCase()));
         }
@@ -103,7 +108,7 @@ export default function ActivityPage() {
             });
         }
         setFilteredActivity(activity);
-    }, [searchTerm, activeFilters, allActivity]);
+    }, [searchTerm, activeFilters, allActivity, activityType]);
     
      useEffect(() => {
         if (selectedClass) {
@@ -144,6 +149,13 @@ export default function ActivityPage() {
       </div>
       <Card>
           <CardHeader>
+            <Tabs defaultValue="all" onValueChange={(value) => setActivityType(value as any)}>
+                <TabsList className="mb-4">
+                    <TabsTrigger value="all">All</TabsTrigger>
+                    <TabsTrigger value="notes">Notes</TabsTrigger>
+                    <TabsTrigger value="questions">Questions</TabsTrigger>
+                </TabsList>
+            </Tabs>
              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="flex-1">
                 <Input placeholder="Search by title..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />

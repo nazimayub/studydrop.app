@@ -17,9 +17,9 @@ const firebaseConfig = {
 
 // Initialize Firebase only on the client side
 const app = typeof window !== 'undefined' 
-  ? !getApps().length ? initializeApp(firebaseConfig) : getApp()
+  ? getApps().length ? getApp() : initializeApp(firebaseConfig)
   : null;
-
+  
 const db = app ? getFirestore(app) : null;
 const auth = app ? getAuth(app) : null;
 const storage = app ? getStorage(app) : null;

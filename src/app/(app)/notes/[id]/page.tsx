@@ -1,7 +1,8 @@
+
 "use client"
 
 import { useEffect, useState } from "react"
-import { doc, getDoc, updateDoc, increment, runTransaction } from "firebase/firestore"
+import { doc, getDoc, updateDoc, increment, runTransaction, onSnapshot } from "firebase/firestore"
 import { db, auth } from "@/lib/firebase/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
 import Link from "next/link"
@@ -47,55 +48,34 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
   const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
   const { toast } = useToast();
 
-  const fetchNote = async () => {
-    if (!id) return;
-    const noteDocRef = doc(db, "notes", id);
-    const noteSnapshot = await getDoc(noteDocRef);
-    if (noteSnapshot.exists()) {
-        const noteData = noteSnapshot.data() as Note;
-        setNote(noteData);
-        if (user) {
-            const userVoteDocRef = doc(db, "users", user.uid, "votes", `note-${id}`);
-            const userVoteDoc = await getDoc(userVoteDocRef);
-            if (userVoteDoc.exists()) {
-                setUserVote(userVoteDoc.data().type);
-            } else {
-                setUserVote(null);
-            }
-        }
-    }
-  };
-
   useEffect(() => {
-    if (id) {
-        const noteDocRef = doc(db, "notes", id);
-        const unsubscribe = onSnapshot(noteDocRef, (noteSnapshot) => {
-             if (noteSnapshot.exists()) {
-                const noteData = noteSnapshot.data() as Note;
-                setNote(noteData);
-            }
-        });
-        return () => unsubscribe();
-    }
+    if (!id || !db) return;
+    const noteDocRef = doc(db, "notes", id);
+    const unsubscribe = onSnapshot(noteDocRef, (noteSnapshot) => {
+         if (noteSnapshot.exists()) {
+            const noteData = noteSnapshot.data() as Note;
+            setNote(noteData);
+        }
+    });
+    return () => unsubscribe();
   }, [id]);
 
   useEffect(() => {
-    if (id && user) {
-      const userVoteDocRef = doc(db, "users", user.uid, "votes", `note-${id}`);
-      const unsubscribe = onSnapshot(userVoteDocRef, (voteSnapshot) => {
-        if (voteSnapshot.exists()) {
-          setUserVote(voteSnapshot.data().type);
-        } else {
-          setUserVote(null);
-        }
-      });
-      return () => unsubscribe();
-    }
+    if (!id || !user || !db) return;
+    const userVoteDocRef = doc(db, "users", user.uid, "votes", `note-${id}`);
+    const unsubscribe = onSnapshot(userVoteDocRef, (voteSnapshot) => {
+      if (voteSnapshot.exists()) {
+        setUserVote(voteSnapshot.data().type);
+      } else {
+        setUserVote(null);
+      }
+    });
+    return () => unsubscribe();
   }, [id, user]);
 
   
   const handleVote = async (voteType: 'up' | 'down') => {
-    if (!user) {
+    if (!user || !db) {
         toast({ variant: "destructive", title: "Login Required" });
         return;
     }
@@ -119,6 +99,7 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
             
             const currentPoints = authorDoc.data()?.points || 0;
             const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
+            
             let pointsChange = 0;
             let upvoteIncrement = 0;
             let downvoteIncrement = 0;

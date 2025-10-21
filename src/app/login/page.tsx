@@ -2,7 +2,7 @@
 "use client"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth"
 import { auth } from "@/lib/firebase/firebase"
 import { useToast } from "@/hooks/use-toast"
@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
 
-export default function LoginPage() {
+function LoginFormComponent() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const router = useRouter()
@@ -41,6 +41,14 @@ export default function LoginPage() {
             });
             return;
         }
+        if (!auth) {
+             toast({
+                variant: "destructive",
+                title: "Login Failed",
+                description: "Authentication service is not available.",
+            });
+            return;
+        }
         try {
             await signInWithEmailAndPassword(auth, email, password);
             handleSuccess();
@@ -55,6 +63,14 @@ export default function LoginPage() {
     }
 
     const handleGoogleLogin = async () => {
+         if (!auth) {
+             toast({
+                variant: "destructive",
+                title: "Login Failed",
+                description: "Authentication service is not available.",
+            });
+            return;
+        }
         try {
             const provider = new GoogleAuthProvider();
             provider.setCustomParameters({ prompt: 'select_account' });
@@ -133,5 +149,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginFormComponent />
+    </Suspense>
   )
 }

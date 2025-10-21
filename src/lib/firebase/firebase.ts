@@ -1,4 +1,5 @@
 
+"use client";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
@@ -14,17 +15,19 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const db = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
+// Initialize Firebase only on the client side
+const app = typeof window !== 'undefined' 
+  ? !getApps().length ? initializeApp(firebaseConfig) : getApp()
+  : null;
 
-const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
+const db = app ? getFirestore(app) : null;
+const auth = app ? getAuth(app) : null;
+const storage = app ? getStorage(app) : null;
+const messaging = app && typeof window !== 'undefined' ? getMessaging(app) : null;
 
 
 // Explicitly set the auth domain to prevent intermittent issues.
-if (process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN) {
+if (auth && process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN) {
   auth.tenantId = null;
   auth.languageCode = 'en';
 }

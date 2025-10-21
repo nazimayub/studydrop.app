@@ -36,7 +36,7 @@ export default function LandingPage() {
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center space-y-8 text-center">
               <Image
-                src="/logo-icon.png"
+                src="/3.png"
                 width="144"
                 height="144"
                 alt="opendesk hero icon"

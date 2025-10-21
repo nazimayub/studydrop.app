@@ -4,8 +4,9 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Activity, NotebookText, UploadCloud, Users } from 'lucide-react';
+import { Activity, NotebookText, UploadCloud, Users, Menu } from 'lucide-react';
 import { Logo } from '@/components/logo';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 export default function LandingPage() {
   return (
@@ -15,7 +16,7 @@ export default function LandingPage() {
           <Logo />
           <span className="sr-only">opendesk</span>
         </Link>
-        <nav className="ml-auto flex items-center gap-4 sm:gap-6">
+        <nav className="ml-auto hidden md:flex items-center gap-4 sm:gap-6">
           <Link href="#features" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
             Features
           </Link>
@@ -29,6 +30,30 @@ export default function LandingPage() {
             <Button>Get Started</Button>
           </Link>
         </nav>
+        <Sheet>
+            <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden ml-auto">
+                    <Menu />
+                    <span className="sr-only">Toggle Menu</span>
+                </Button>
+            </SheetTrigger>
+            <SheetContent side="right">
+                <nav className="grid gap-6 text-lg font-medium mt-8">
+                     <Link href="#features" className="text-muted-foreground hover:text-foreground" prefetch={false}>
+                        Features
+                    </Link>
+                    <Link href="#testimonials" className="text-muted-foreground hover:text-foreground" prefetch={false}>
+                        Testimonials
+                    </Link>
+                    <Link href="/login" className="text-muted-foreground hover:text-foreground" prefetch={false}>
+                        Login
+                    </Link>
+                    <Link href="/signup" className="mt-4" prefetch={false}>
+                        <Button className="w-full">Get Started</Button>
+                    </Link>
+                </nav>
+            </SheetContent>
+        </Sheet>
       </header>
       <main className="flex-1">
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 relative overflow-hidden">

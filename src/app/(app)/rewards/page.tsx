@@ -103,7 +103,7 @@ export default function RewardsPage() {
             <p className="text-muted-foreground">Earn points and badges for your contributions.</p>
         </div>
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <CardTitle>Your Progress</CardTitle>
                 <div className="flex items-center gap-2 font-bold text-2xl text-accent">
                     <Award className="h-6 w-6" />
@@ -145,32 +145,34 @@ export default function RewardsPage() {
                         <CardDescription>See how you rank against other students.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Rank</TableHead>
-                                    <TableHead>User</TableHead>
-                                    <TableHead className="text-right">Points</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {leaderboard.map((entry, index) => (
-                                    <TableRow key={entry.id} className={entry.id === user?.uid ? 'bg-accent/10' : ''}>
-                                        <TableCell className="font-medium text-lg">{index + 1}</TableCell>
-                                        <TableCell>
-                                            <Link href={`/users/${entry.id}`} className="flex items-center gap-2 hover:underline">
-                                                <Avatar>
-                                                    <AvatarImage src={entry.photoURL} />
-                                                    <AvatarFallback>{`${entry.firstName?.charAt(0) || ''}${entry.lastName?.charAt(0) || ''}`}</AvatarFallback>
-                                                </Avatar>
-                                                <span>{entry.id === user?.uid ? 'You' : `${entry.firstName} ${entry.lastName}`}</span>
-                                            </Link>
-                                        </TableCell>
-                                        <TableCell className="text-right font-semibold">{entry.points.toLocaleString()}</TableCell>
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Rank</TableHead>
+                                        <TableHead>User</TableHead>
+                                        <TableHead className="text-right">Points</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {leaderboard.map((entry, index) => (
+                                        <TableRow key={entry.id} className={entry.id === user?.uid ? 'bg-accent/10' : ''}>
+                                            <TableCell className="font-medium text-lg">{index + 1}</TableCell>
+                                            <TableCell>
+                                                <Link href={`/users/${entry.id}`} className="flex items-center gap-2 hover:underline">
+                                                    <Avatar>
+                                                        <AvatarImage src={entry.photoURL} />
+                                                        <AvatarFallback>{`${entry.firstName?.charAt(0) || ''}${entry.lastName?.charAt(0) || ''}`}</AvatarFallback>
+                                                    </Avatar>
+                                                    <span>{entry.id === user?.uid ? 'You' : `${entry.firstName} ${entry.lastName}`}</span>
+                                                </Link>
+                                            </TableCell>
+                                            <TableCell className="text-right font-semibold">{entry.points.toLocaleString()}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </CardContent>
                 </Card>
             </TabsContent>

@@ -175,14 +175,14 @@ export default function NotesPage() {
 
   return (
     <>
-    <div className="flex items-center">
-        <div className="flex-1">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div>
             <h1 className="text-3xl font-bold font-headline">All Notes</h1>
             <p className="text-muted-foreground">Explore notes shared by the community.</p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex items-center gap-2 mt-4 sm:mt-0">
           <Link href="/notes/new">
-            <Button size="sm" className="h-8 gap-1">
+            <Button size="sm" className="h-8 gap-1 w-full sm:w-auto">
                 <PlusCircle className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                 Add Note
@@ -192,11 +192,12 @@ export default function NotesPage() {
         </div>
       </div>
        <Card>
-          <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex-1">
+          <CardHeader>
+             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex-1 w-full">
                 <Input placeholder="Search by note title..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
-              <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+              <div className="flex flex-col md:flex-row gap-2 w-full">
                     <Select value={selectedClass} onValueChange={setSelectedClass}>
                         <SelectTrigger>
                             <SelectValue placeholder="Filter by Class" />
@@ -217,8 +218,9 @@ export default function NotesPage() {
                             ))}
                         </SelectContent>
                     </Select>
-                    <Button onClick={handleAddFilter} disabled={!selectedUnit}>Add Filter</Button>
+                    <Button onClick={handleAddFilter} disabled={!selectedUnit} className="w-full md:w-auto">Add Filter</Button>
                 </div>
+              </div>
           </CardHeader>
            {activeFilters.length > 0 && (
                 <CardContent className="border-t pt-4">
@@ -237,67 +239,69 @@ export default function NotesPage() {
                 </CardContent>
             )}
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Author</TableHead>
-                  <TableHead>Tags</TableHead>
-                  <TableHead className="hidden md:table-cell">
-                    Created at
-                  </TableHead>
-                  <TableHead>
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredNotes.map((note) => (
-                    <TableRow key={note.id}>
-                    <TableCell className="font-medium">
-                        <Link href={`/notes/${note.id}`} className="hover:underline">{note.title}</Link>
-                    </TableCell>
-                    <TableCell>
-                         <Link href={`/users/${note.authorId}`} className="hover:underline">{note.authorName}</Link>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {note.tags?.slice(0, 2).map(tag => (
-                          <Badge key={`${tag.class}-${tag.topic}`} variant="secondary">{tag.topic}</Badge>
-                        ))}
-                         {note.tags && note.tags.length > 2 && (
-                          <Badge variant="outline">+{note.tags.length - 2}</Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                        {new Date(note.date).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                        {user?.uid === note.authorId && (
-                            <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                aria-haspopup="true"
-                                size="icon"
-                                variant="ghost"
-                                >
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onSelect={() => router.push(`/notes/${note.id}/edit`)}>Edit</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleDeleteClick(note.id)}>Delete</DropdownMenuItem>
-                            </DropdownMenuContent>
-                            </DropdownMenu>
-                        )}
-                    </TableCell>
+            <div className="overflow-x-auto">
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Author</TableHead>
+                    <TableHead className="hidden sm:table-cell">Tags</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                        Created at
+                    </TableHead>
+                    <TableHead>
+                        <span className="sr-only">Actions</span>
+                    </TableHead>
                     </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                    {filteredNotes.map((note) => (
+                        <TableRow key={note.id}>
+                        <TableCell className="font-medium">
+                            <Link href={`/notes/${note.id}`} className="hover:underline">{note.title}</Link>
+                        </TableCell>
+                        <TableCell>
+                            <Link href={`/users/${note.authorId}`} className="hover:underline">{note.authorName}</Link>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                        <div className="flex flex-wrap gap-1">
+                            {note.tags?.slice(0, 2).map(tag => (
+                            <Badge key={`${tag.class}-${tag.topic}`} variant="secondary">{tag.topic}</Badge>
+                            ))}
+                            {note.tags && note.tags.length > 2 && (
+                            <Badge variant="outline">+{note.tags.length - 2}</Badge>
+                            )}
+                        </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                            {new Date(note.date).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                            {user?.uid === note.authorId && (
+                                <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                    aria-haspopup="true"
+                                    size="icon"
+                                    variant="ghost"
+                                    >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    <span className="sr-only">Toggle menu</span>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                    <DropdownMenuItem onSelect={() => router.push(`/notes/${note.id}/edit`)}>Edit</DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => handleDeleteClick(note.id)}>Delete</DropdownMenuItem>
+                                </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
+                        </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+                </Table>
+            </div>
           </CardContent>
           <CardFooter>
             <div className="text-xs text-muted-foreground">

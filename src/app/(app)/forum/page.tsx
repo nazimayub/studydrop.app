@@ -119,21 +119,22 @@ export default function ForumPage() {
 
   return (
     <div className="grid gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 className="text-3xl font-bold font-headline">Q&A Forum</h1>
             <p className="text-muted-foreground">Ask questions, get answers, and help others.</p>
         </div>
-        <Link href="/forum/new">
-          <Button>
+        <Link href="/forum/new" className="mt-4 sm:mt-0">
+          <Button className="w-full sm:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
             Ask Question
           </Button>
         </Link>
       </div>
       <Card>
-          <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex items-center gap-4 flex-1">
+          <CardHeader>
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-center gap-4 flex-1 w-full">
                 <Input placeholder="Search by question title..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                  <Select value={sortOrder} onValueChange={setSortOrder}>
                     <SelectTrigger className="w-[180px]">
@@ -145,29 +146,30 @@ export default function ForumPage() {
                     </SelectContent>
                 </Select>
               </div>
-              <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-                    <Select value={selectedClass} onValueChange={setSelectedClass}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Filter by Class" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {courses.map(course => (
-                                <SelectItem key={course.name} value={course.name}>{course.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                     <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedClass}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Filter by Unit" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {availableUnits.map(unit => (
-                                <SelectItem key={unit} value={unit}>{unit}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Button onClick={handleAddFilter} disabled={!selectedUnit}>Add Filter</Button>
-                </div>
+            </div>
+             <div className="flex flex-col md:flex-row gap-2 w-full mt-4">
+                  <Select value={selectedClass} onValueChange={setSelectedClass}>
+                      <SelectTrigger>
+                          <SelectValue placeholder="Filter by Class" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          {courses.map(course => (
+                              <SelectItem key={course.name} value={course.name}>{course.name}</SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+                   <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedClass}>
+                      <SelectTrigger>
+                          <SelectValue placeholder="Filter by Unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          {availableUnits.map(unit => (
+                              <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+                  <Button onClick={handleAddFilter} disabled={!selectedUnit} className="w-full md:w-auto">Add Filter</Button>
+              </div>
           </CardHeader>
             {activeFilters.length > 0 && (
                 <CardContent className="border-t pt-4">
@@ -188,15 +190,26 @@ export default function ForumPage() {
             <CardContent className="p-0">
                 <div className="grid">
                     {filteredPosts.map(post => (
-                    <div key={post.id} className="flex items-start gap-4 p-4 border-b last:border-b-0">
-                        <UserLink authorId={post.authorId}>
-                            <Avatar>
-                                <AvatarImage src={post.avatar} />
-                                <AvatarFallback>{post.fallback}</AvatarFallback>
-                            </Avatar>
-                        </UserLink>
+                    <div key={post.id} className="flex flex-col sm:flex-row items-start gap-4 p-4 border-b last:border-b-0">
+                        <div className="flex items-center gap-4 w-full sm:w-auto">
+                            <UserLink authorId={post.authorId}>
+                                <Avatar>
+                                    <AvatarImage src={post.avatar} />
+                                    <AvatarFallback>{post.fallback}</AvatarFallback>
+                                </Avatar>
+                            </UserLink>
+                            <div className="grid gap-1 flex-1 sm:hidden">
+                                <Link href={`/forum/${post.id}`} className="hover:underline">
+                                    <h3 className="font-semibold">{post.title}</h3>
+                                </Link>
+                                <p className="text-sm text-muted-foreground">
+                                    by <UserLink authorId={post.authorId}>{post.author}</UserLink>
+                                </p>
+                            </div>
+                        </div>
+
                         <div className="grid gap-1 flex-1">
-                            <Link href={`/forum/${post.id}`} className="hover:underline">
+                            <Link href={`/forum/${post.id}`} className="hover:underline hidden sm:block">
                                 <h3 className="font-semibold">{post.title}</h3>
                             </Link>
                             <div className="flex flex-wrap gap-1 mt-1">
@@ -204,11 +217,11 @@ export default function ForumPage() {
                                 <Badge key={`${tag.class}-${tag.topic}`} variant="secondary">{tag.class}: {tag.topic}</Badge>
                                 ))}
                             </div>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                Asked by <UserLink authorId={post.authorId}>{post.author}</UserLink> on {new Date(post.date?.seconds * 1000).toLocaleDateString()}
+                            <p className="text-sm text-muted-foreground mt-1 hidden sm:block">
+                                Asked by <UserLink authorId={post.authorId}>{post.author}</Link> on {new Date(post.date?.seconds * 1000).toLocaleDateString()}
                             </p>
                         </div>
-                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                         <div className="flex items-center justify-end gap-4 text-sm text-muted-foreground w-full sm:w-auto mt-2 sm:mt-0">
                             <div className="flex items-center gap-1">
                                 <ThumbsUp className="h-4 w-4" />
                                 {(post.upvotes || 0) - (post.downvotes || 0)}

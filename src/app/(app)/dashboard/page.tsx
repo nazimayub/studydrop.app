@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect, useState } from "react";
@@ -172,7 +173,7 @@ export default function Dashboard() {
             <h1 className="text-3xl font-bold font-headline">Glad to see you, {user?.displayName?.split(' ')[0] || 'User'}!</h1>
             <p className="text-muted-foreground">Here's what's happening in your community.</p>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -246,50 +247,52 @@ export default function Dashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Activity</TableHead>
-                    <TableHead>Tags</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentActivity.map(activity => (
-                    <TableRow key={activity.id}>
-                        <TableCell>
-                            {activity.authorId ? (
-                                 <Link href={`/users/${activity.authorId}`} className="font-medium hover:underline">{activity.author}</Link>
-                            ) : (
-                                <div className="font-medium">{activity.author}</div>
-                            )}
-                        </TableCell>
-                        <TableCell>
-                             <Link href={activity.type === 'Note' ? `/notes/${activity.id}` : `/forum/${activity.id}`} className="font-medium hover:underline">
-                                {activity.title}
-                            </Link>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {activity.tags?.map((tag, index) => (
-                              <Badge key={index} variant="secondary">
-                                {`${tag.class}: ${tag.topic}`}
-                              </Badge>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                        <Badge className="text-xs" variant="outline">
-                            {activity.type}
-                        </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">{activity.date ? activity.date.toLocaleDateString() : ''}</TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Activity</TableHead>
+                      <TableHead className="hidden sm:table-cell">Tags</TableHead>
+                      <TableHead className="hidden sm:table-cell">Type</TableHead>
+                      <TableHead className="text-right">Date</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {recentActivity.map(activity => (
+                      <TableRow key={activity.id}>
+                          <TableCell>
+                              {activity.authorId ? (
+                                   <Link href={`/users/${activity.authorId}`} className="font-medium hover:underline">{activity.author}</Link>
+                              ) : (
+                                  <div className="font-medium">{activity.author}</div>
+                              )}
+                          </TableCell>
+                          <TableCell>
+                               <Link href={activity.type === 'Note' ? `/notes/${activity.id}` : `/forum/${activity.id}`} className="font-medium hover:underline">
+                                  {activity.title}
+                              </Link>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <div className="flex flex-wrap gap-1">
+                              {activity.tags?.map((tag, index) => (
+                                <Badge key={index} variant="secondary">
+                                  {`${tag.class}: ${tag.topic}`}
+                                </Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                          <Badge className="text-xs" variant="outline">
+                              {activity.type}
+                          </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">{activity.date ? activity.date.toLocaleDateString() : ''}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
           <Card>

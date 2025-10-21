@@ -168,8 +168,8 @@ export default function NewNotePage() {
                                 </Badge>
                             ))}
                         </div>
-                        <div className="flex items-end gap-2">
-                             <div className="grid gap-2 flex-1">
+                        <div className="flex flex-col sm:flex-row items-end gap-2">
+                             <div className="grid gap-2 flex-1 w-full">
                                 <Label htmlFor="class-select" className="text-xs">Class</Label>
                                 <Select value={selectedClass} onValueChange={setSelectedClass}>
                                     <SelectTrigger id="class-select">
@@ -182,7 +182,7 @@ export default function NewNotePage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="grid gap-2 flex-1">
+                            <div className="grid gap-2 flex-1 w-full">
                                 <Label htmlFor="unit-select" className="text-xs">Unit / Topic</Label>
                                  <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedClass}>
                                     <SelectTrigger id="unit-select">
@@ -195,7 +195,7 @@ export default function NewNotePage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <Button variant="outline" onClick={handleAddTag}>Add Tag</Button>
+                            <Button variant="outline" onClick={handleAddTag} className="w-full sm:w-auto">Add Tag</Button>
                         </div>
                     </div>
                      <div className="grid gap-2">

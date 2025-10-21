@@ -142,7 +142,7 @@ export default function ActivityPage() {
 
   return (
     <div className="grid gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 className="text-3xl font-bold font-headline">Community Activity</h1>
             <p className="text-muted-foreground">The latest notes and questions from the community.</p>
@@ -150,40 +150,40 @@ export default function ActivityPage() {
       </div>
       <Card>
           <CardHeader>
-            <Tabs defaultValue="all" onValueChange={(value) => setActivityType(value as any)}>
-                <TabsList className="mb-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex-1 w-full">
+                <Input placeholder="Search by title..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              </div>
+              <Tabs defaultValue="all" onValueChange={(value) => setActivityType(value as any)}>
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="all">All</TabsTrigger>
                     <TabsTrigger value="notes">Notes</TabsTrigger>
                     <TabsTrigger value="questions">Questions</TabsTrigger>
                 </TabsList>
             </Tabs>
-             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex-1">
-                <Input placeholder="Search by title..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-              </div>
-              <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-                    <Select value={selectedClass} onValueChange={setSelectedClass}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Filter by Class" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {courses.map(course => (
-                                <SelectItem key={course.name} value={course.name}>{course.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                     <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedClass}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Filter by Unit" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {availableUnits.map(unit => (
-                                <SelectItem key={unit} value={unit}>{unit}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Button onClick={handleAddFilter} disabled={!selectedUnit}>Add Filter</Button>
-                </div>
+            </div>
+            <div className="flex flex-col md:flex-row gap-2 w-full mt-4">
+                  <Select value={selectedClass} onValueChange={setSelectedClass}>
+                      <SelectTrigger>
+                          <SelectValue placeholder="Filter by Class" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          {courses.map(course => (
+                              <SelectItem key={course.name} value={course.name}>{course.name}</SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+                   <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedClass}>
+                      <SelectTrigger>
+                          <SelectValue placeholder="Filter by Unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          {availableUnits.map(unit => (
+                              <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+                  <Button onClick={handleAddFilter} disabled={!selectedUnit} className="w-full md:w-auto">Add Filter</Button>
               </div>
           </CardHeader>
            {activeFilters.length > 0 && (
@@ -203,50 +203,52 @@ export default function ActivityPage() {
                 </CardContent>
             )}
             <CardContent className="p-0">
-               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Activity</TableHead>
-                    <TableHead>Tags</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredActivity.map(activity => (
-                    <TableRow key={activity.id}>
-                        <TableCell>
-                            {activity.authorId ? (
-                                 <Link href={`/users/${activity.authorId}`} className="font-medium hover:underline">{activity.author}</Link>
-                            ) : (
-                                <div className="font-medium">{activity.author}</div>
-                            )}
-                        </TableCell>
-                        <TableCell>
-                             <Link href={activity.url} className="font-medium hover:underline">
-                                {activity.title}
-                            </Link>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {Array.isArray(activity.tags) && activity.tags.map((tag: any, index: number) => (
-                              <Badge key={index} variant="secondary">
-                                {`${tag.class}: ${tag.topic}`}
-                              </Badge>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                        <Badge className="text-xs" variant="outline">
-                            {activity.type}
-                        </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">{activity.date.toLocaleDateString()}</TableCell>
+               <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Activity</TableHead>
+                      <TableHead className="hidden sm:table-cell">Tags</TableHead>
+                      <TableHead className="hidden sm:table-cell">Type</TableHead>
+                      <TableHead className="text-right">Date</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredActivity.map(activity => (
+                      <TableRow key={activity.id}>
+                          <TableCell>
+                              {activity.authorId ? (
+                                   <Link href={`/users/${activity.authorId}`} className="font-medium hover:underline">{activity.author}</Link>
+                              ) : (
+                                  <div className="font-medium">{activity.author}</div>
+                              )}
+                          </TableCell>
+                          <TableCell>
+                               <Link href={activity.url} className="font-medium hover:underline">
+                                  {activity.title}
+                              </Link>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <div className="flex flex-wrap gap-1">
+                              {Array.isArray(activity.tags) && activity.tags.map((tag: any, index: number) => (
+                                <Badge key={index} variant="secondary">
+                                  {`${tag.class}: ${tag.topic}`}
+                                </Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                          <Badge className="text-xs" variant="outline">
+                              {activity.type}
+                          </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">{activity.date.toLocaleDateString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+               </div>
             </CardContent>
              <CardFooter>
             <div className="text-xs text-muted-foreground">

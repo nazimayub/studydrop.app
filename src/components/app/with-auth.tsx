@@ -3,9 +3,10 @@
 
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase/firebase";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import React, { useEffect } from "react";
 import { Skeleton } from "../ui/skeleton";
+import { Suspense } from "react";
 
 export const withAuth = <P extends object>(Component: React.ComponentType<P>) => {
     const AuthComponent = (props: P) => {
@@ -40,11 +41,11 @@ export const withAuth = <P extends object>(Component: React.ComponentType<P>) =>
 
     AuthComponent.displayName = `withAuth(${Component.displayName || Component.name || 'Component'})`;
     
-    // We need a wrapper to use useSearchParams
+    // We need a wrapper to use useSearchParams if any of the wrapped pages need it.
     const WithSearchParams = (props: P) => (
-      <React.Suspense fallback={<div>Loading...</div>}>
+      <Suspense fallback={<div>Loading...</div>}>
         <AuthComponent {...props} />
-      </React.Suspense>
+      </Suspense>
     );
     WithSearchParams.displayName = "WithSearchParams";
     return WithSearchParams;

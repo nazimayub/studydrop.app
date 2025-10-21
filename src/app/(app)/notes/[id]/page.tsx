@@ -220,7 +220,7 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
         </CardFooter>
       </Card>
       
-      <CommentsSection contentId={id} contentType="note" contentAuthorId={note.authorId} />
+      {note.authorId && <CommentsSection contentId={id} contentType="note" contentAuthorId={note.authorId} />}
     </div>
   )
 }

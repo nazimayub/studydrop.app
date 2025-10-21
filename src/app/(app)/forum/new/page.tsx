@@ -32,7 +32,7 @@ export default function NewQuestionPage() {
     const [attachment, setAttachment] = useState<File | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
-    const [user] = useAuthState(auth);
+    const [user] = auth ? useAuthState(auth) : [null];
     const { toast } = useToast();
     
     const [selectedClass, setSelectedClass] = useState("");
@@ -84,6 +84,8 @@ export default function NewQuestionPage() {
             });
             return;
         }
+
+        if (!db || !storage) return;
 
         setIsLoading(true);
 

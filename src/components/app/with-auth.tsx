@@ -1,16 +1,15 @@
-
 "use client";
 
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase/firebase";
 import { useRouter, usePathname } from "next/navigation";
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense } from "react";
 import { Skeleton } from "../ui/skeleton";
-import { Suspense } from "react";
 
 export const withAuth = <P extends object>(Component: React.ComponentType<P>) => {
     const AuthComponent = (props: P) => {
-        const [user, loading, error] = useAuthState(auth);
+        // useAuthState must have a valid auth object
+        const [user, loading, error] = auth ? useAuthState(auth) : [null, true, null];
         const router = useRouter();
         const pathname = usePathname();
 
@@ -29,21 +28,30 @@ export const withAuth = <P extends object>(Component: React.ComponentType<P>) =>
                         <Skeleton className="h-4 w-[200px]" />
                     </div>
                 </div>
-            )
+            );
         }
         
         if (error) {
+            // This can happen if Firebase fails to initialize, e.g. network error
             return <div>Error: {error.message}</div>
         }
 
         return <Component {...props} />;
     };
 
-    AuthComponent.displayName = `withAuth(${Component.displayName || Component.name || 'Component'})`;
+    AuthComponent.displayName = `withAuth(${(Component as any).displayName || Component.name || 'Component'})`;
     
-    // We need a wrapper to use useSearchParams if any of the wrapped pages need it.
+    // This wrapper is necessary to use useSearchParams on pages wrapped with withAuth
     const WithSearchParams = (props: P) => (
-      <Suspense fallback={<div>Loading...</div>}>
+      <Suspense fallback={
+        <div className="flex flex-col space-y-3 p-4">
+            <Skeleton className="h-[125px] w-full rounded-xl" />
+            <div className="space-y-2">
+                <Skeleton className="h-4 w-[250px]" />
+                <Skeleton className="h-4 w-[200px]" />
+            </div>
+        </div>
+      }>
         <AuthComponent {...props} />
       </Suspense>
     );

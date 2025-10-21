@@ -1,10 +1,9 @@
-
 "use client";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
-import { getMessaging } from "firebase/messaging";
+import { getMessaging }from "firebase/messaging";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -16,10 +15,13 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const db = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
-const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
+const app = typeof window !== 'undefined' 
+  ? (!getApps().length ? initializeApp(firebaseConfig) : getApp())
+  : null;
+  
+const db = app ? getFirestore(app) : null;
+const auth = app ? getAuth(app) : null;
+const storage = app ? getStorage(app) : null;
+const messaging = app && typeof window !== 'undefined' ? getMessaging(app) : null;
 
 export { app, db, auth, storage, messaging };

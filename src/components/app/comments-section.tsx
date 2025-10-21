@@ -43,7 +43,7 @@ interface CommentsSectionProps {
 }
 
 export function CommentsSection({ contentId, contentType, contentAuthorId }: CommentsSectionProps) {
-    const [user] = useAuthState(auth);
+    const [user] = auth ? useAuthState(auth) : [null];
     const { toast } = useToast();
     const [comments, setComments] = useState<Comment[]>([]);
     const [userVotes, setUserVotes] = useState<UserVoteState>({});
@@ -54,15 +54,16 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
     const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
 
     const collectionName = contentType === 'note' ? 'notes' : 'questions';
-    const commentsCollectionRef = collection(db, collectionName, contentId, "comments");
+    const commentsCollectionRef = db ? collection(db, collectionName, contentId, "comments") : null;
     
      const fetchCommentsAndVotes = () => {
+        if (!commentsCollectionRef) return;
         const q = query(commentsCollectionRef, orderBy("date", "desc"));
         const unsubscribe = onSnapshot(q, async (snapshot) => {
             const commentsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comment));
             setComments(commentsList);
             
-            if (user) {
+            if (user && db) {
                 const newVotes: UserVoteState = {};
                 for (const comment of commentsList) {
                     const voteDocRef = doc(db, "users", user.uid, "votes", `comment-${comment.id}`);
@@ -83,9 +84,9 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
     useEffect(() => {
         if (contentId && user) {
             const unsubscribe = fetchCommentsAndVotes();
-            return () => unsubscribe();
+            return () => unsubscribe && unsubscribe();
         }
-    }, [contentId, collectionName, user]);
+    }, [contentId, user]);
     
     const handleDeleteClick = (commentId: string) => {
         setCommentToDelete(commentId);
@@ -99,7 +100,7 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
     };
 
     const handleDeleteConfirm = async () => {
-        if (!commentToDelete) return;
+        if (!commentToDelete || !commentsCollectionRef) return;
         try {
             await deleteDoc(doc(commentsCollectionRef, commentToDelete));
             toast({ title: "Comment deleted." });
@@ -113,7 +114,7 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
     };
 
     const handlePostComment = async () => {
-        if (!newComment.trim() || !user) return;
+        if (!newComment.trim() || !user || !db || !storage) return;
         setIsLoading(true);
         
         const batch = writeBatch(db);
@@ -184,7 +185,7 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
     };
     
     const handleVote = async (commentId: string, voteType: 'up' | 'down', authorId: string) => {
-        if (!user) {
+        if (!user || !db || !commentsCollectionRef) {
             toast({ variant: "destructive", title: "Login Required" });
             return;
         }
@@ -244,8 +245,7 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
                 });
 
                 if (pointsChange !== 0 && authorId) {
-                    const newPoints = currentPoints + pointsChange;
-                    transaction.update(authorRef, { points: newPoints });
+                    transaction.update(authorRef, { points: currentPoints + pointsChange });
                 }
             });
         } catch (error) {

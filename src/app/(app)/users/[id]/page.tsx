@@ -40,6 +40,7 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
 
     useEffect(() => {
         const fetchUserData = async () => {
+            if (!db) return;
             setLoading(true);
             try {
                 const userDocRef = doc(db, 'users', id);
@@ -160,7 +161,7 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
                         <Award className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{userProfile.points.toLocaleString()}</div>
+                        <div className="text-2xl font-bold">{(userProfile.points || 0).toLocaleString()}</div>
                     </CardContent>
                 </Card>
             </div>

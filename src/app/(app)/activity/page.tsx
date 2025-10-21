@@ -46,6 +46,7 @@ export default function ActivityPage() {
 
     useEffect(() => {
        const fetchAllActivity = async () => {
+            if (!db) return;
             const toDate = (firebaseDate: any): Date => {
                 if (!firebaseDate) return new Date();
                 if (firebaseDate.toDate) return firebaseDate.toDate();

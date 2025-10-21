@@ -1,3 +1,4 @@
+
 "use client"
 import { useEffect, useState } from "react";
 import { collection, getDocs, query, orderBy, limit, doc, getDoc, collectionGroup, where } from "firebase/firestore";
@@ -30,14 +31,14 @@ interface Badge {
 }
 
 export default function RewardsPage() {
-    const [user] = useAuthState(auth);
+    const [user] = auth ? useAuthState(auth) : [null];
     const [currentUserData, setCurrentUserData] = useState<UserData | null>(null);
     const [leaderboard, setLeaderboard] = useState<UserData[]>([]);
     const [badges, setBadges] = useState<Badge[]>([]);
     
     useEffect(() => {
         const fetchUserData = async () => {
-            if (!user) return;
+            if (!user || !db) return;
 
             const userDocRef = doc(db, "users", user.uid);
             const userDocSnap = await getDoc(userDocRef);
@@ -80,6 +81,7 @@ export default function RewardsPage() {
         };
 
         const fetchLeaderboard = async () => {
+            if (!db) return;
             const usersCollection = collection(db, "users");
             const q = query(usersCollection, orderBy("points", "desc"), limit(10));
             const querySnapshot = await getDocs(q);
@@ -105,7 +107,7 @@ export default function RewardsPage() {
                 <CardTitle>Your Progress</CardTitle>
                 <div className="flex items-center gap-2 font-bold text-2xl text-accent">
                     <Award className="h-6 w-6" />
-                    <span>{currentUserData?.points.toLocaleString() || 0} Points</span>
+                    <span>{(currentUserData?.points || 0).toLocaleString()} Points</span>
                 </div>
             </CardHeader>
         </Card>

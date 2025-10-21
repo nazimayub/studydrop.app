@@ -64,14 +64,14 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     const [answers, setAnswers] = useState<Answer[]>([]);
     const [newAnswer, setNewAnswer] = useState("");
     const [attachment, setAttachment] = useState<File | null>(null);
-    const [user] = useAuthState(auth);
+    const [user] = auth ? useAuthState(auth) : [null];
     const { toast } = useToast();
     const [userVotes, setUserVotes] = useState<UserVoteState>({});
     const [postUserVote, setPostUserVote] = useState<'up' | 'down' | null>(null);
 
 
     const fetchPostAndAnswers = () => {
-        if (!id) return;
+        if (!id || !db) return;
         
         const postUnsubscribe = onSnapshot(doc(db, "questions", id), async (postSnapshot) => {
             if (postSnapshot.exists()) {
@@ -129,6 +129,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
 
     useEffect(() => {
         const incrementViewCount = async () => {
+            if (!db) return;
              const postRef = doc(db, "questions", id);
              await updateDoc(postRef, {
                 views: increment(1)
@@ -148,7 +149,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     };
 
     const handlePostAnswer = async () => {
-        if (!newAnswer.trim() || !user || !post) return;
+        if (!newAnswer.trim() || !user || !post || !db || !storage) return;
 
         try {
             const batch = writeBatch(db);
@@ -220,7 +221,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     };
     
    const handlePostVote = async (voteType: 'up' | 'down') => {
-        if (!user) {
+        if (!user || !db) {
             toast({ variant: "destructive", title: "Login Required" });
             return;
         }
@@ -257,7 +258,6 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                     } else {
                         downvoteIncrement = -1;
                     }
-                    setPostUserVote(null);
                 } else { // New vote or changing vote
                     transaction.set(userVoteRef, { type: voteType });
                     if (currentVote === 'up') { // Changing from up to down
@@ -273,7 +273,6 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                     } else {
                         downvoteIncrement += 1;
                     }
-                    setPostUserVote(voteType);
                 }
 
                 transaction.update(postRef, {
@@ -282,8 +281,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 });
 
                 if (pointsChange !== 0) {
-                    const newPoints = currentPoints + pointsChange;
-                    transaction.update(authorRef, { points: newPoints });
+                    transaction.update(authorRef, { points: currentPoints + pointsChange });
                 }
             });
         } catch (error) {
@@ -293,7 +291,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     };
 
     const handleAnswerVote = async (answer: Answer, voteType: 'up' | 'down') => {
-        if (!user) {
+        if (!user || !db) {
             toast({ variant: "destructive", title: "Login Required" });
             return;
         }
@@ -321,7 +319,6 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 let pointsChange = 0;
                 let upvoteIncrement = 0;
                 let downvoteIncrement = 0;
-                const optimisticVotes = { ...userVotes };
 
                 if (currentVote === voteType) {
                     transaction.delete(userVoteRef);
@@ -331,7 +328,6 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                     } else {
                         downvoteIncrement = -1;
                     }
-                    optimisticVotes[answer.id] = null;
                 } else {
                     transaction.set(userVoteRef, { type: voteType });
                     if (currentVote === 'up') {
@@ -347,18 +343,15 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                     } else {
                         downvoteIncrement += 1;
                     }
-                    optimisticVotes[answer.id] = voteType;
                 }
 
-                setUserVotes(optimisticVotes);
                 transaction.update(answerRef, {
                     upvotes: increment(upvoteIncrement),
                     downvotes: increment(downvoteIncrement),
                 });
                 
                 if (pointsChange !== 0 && answer.authorId) {
-                    const newPoints = currentPoints + pointsChange;
-                    transaction.update(authorRef, { points: newPoints });
+                    transaction.update(authorRef, { points: currentPoints + pointsChange });
                 }
             });
         } catch (error) {
@@ -369,7 +362,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
 
 
      const handleAcceptAnswer = async (answerToAccept: Answer) => {
-        if (!user || user.uid !== post?.authorId) return;
+        if (!user || user.uid !== post?.authorId || !db) return;
 
         try {
             await runTransaction(db, async (transaction) => {

@@ -50,6 +50,7 @@ export default function ForumPage() {
 
     useEffect(() => {
         const fetchPosts = async () => {
+            if (!db) return;
             const postsCollection = collection(db, "questions");
             const q = query(postsCollection, orderBy("date", "desc"));
             const postsSnapshot = await getDocs(q);

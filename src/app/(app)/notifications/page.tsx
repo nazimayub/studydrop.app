@@ -18,11 +18,11 @@ interface Notification {
 }
 
 export default function NotificationsPage() {
-    const [user] = useAuthState(auth);
+    const [user] = auth ? useAuthState(auth) : [null];
     const [notifications, setNotifications] = useState<Notification[]>([]);
 
     useEffect(() => {
-        if (user) {
+        if (user && db) {
             const notificationsRef = collection(db, "users", user.uid, "notifications");
             const q = query(notificationsRef, orderBy("date", "desc"));
             const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -34,7 +34,7 @@ export default function NotificationsPage() {
     }, [user]);
 
     const markAllAsRead = async () => {
-        if (user) {
+        if (user && db) {
             const unreadNotifications = notifications.filter(n => !n.isRead);
             const notificationsRef = collection(db, "users", user.uid, "notifications");
             unreadNotifications.forEach(async (notification) => {

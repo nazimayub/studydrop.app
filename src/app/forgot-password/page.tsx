@@ -25,6 +25,14 @@ export default function ForgotPasswordPage() {
 
 
     const handleResetPassword = async () => {
+        if (!auth) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Firebase not configured.",
+            });
+            return;
+        }
         try {
             await sendPasswordResetEmail(auth, email);
             setIsSent(true)

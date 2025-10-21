@@ -22,10 +22,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 
 export function UserNav() {
-  const [user, loading] = useAuthState(auth);
+  const [user, loading] = auth ? useAuthState(auth) : [null, true];
   const router = useRouter();
 
   const handleLogout = async () => {
+    if (!auth) return;
     await signOut(auth);
     router.push("/");
   };

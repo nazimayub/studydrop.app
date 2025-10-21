@@ -71,7 +71,7 @@ interface Note {
 }
 
 export default function NotesPage() {
-    const [user] = useAuthState(auth);
+    const [user] = auth ? useAuthState(auth) : [null];
     const [allNotes, setAllNotes] = useState<Note[]>([]);
     const [filteredNotes, setFilteredNotes] = useState<Note[]>([]);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -85,6 +85,7 @@ export default function NotesPage() {
     const [activeFilters, setActiveFilters] = useState<NoteTag[]>([]);
 
     const fetchNotes = async () => {
+        if (!db) return;
         const notesQuery = query(collection(db, "notes"), where("isPublic", "==", true), orderBy("date", "desc"));
         const notesSnapshot = await getDocs(notesQuery);
         const notesList = notesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note));
@@ -142,7 +143,7 @@ export default function NotesPage() {
     };
 
     const handleDeleteConfirm = async () => {
-        if (noteToDelete) {
+        if (noteToDelete && db) {
             await deleteDoc(doc(db, "notes", noteToDelete));
             setNoteToDelete(null);
             setShowDeleteDialog(false);

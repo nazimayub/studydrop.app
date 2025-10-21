@@ -33,7 +33,7 @@ function SearchResults() {
 
     useEffect(() => {
         const fetchResults = async () => {
-            if (!queryTerm) {
+            if (!queryTerm || !db) {
                 setLoading(false);
                 return;
             };

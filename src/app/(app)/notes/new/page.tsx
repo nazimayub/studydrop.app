@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react";
@@ -37,7 +38,7 @@ export default function NewNotePage() {
 
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
-    const [user] = useAuthState(auth);
+    const [user] = auth ? useAuthState(auth) : [null];
     const { toast } = useToast();
 
     useEffect(() => {
@@ -84,6 +85,8 @@ export default function NewNotePage() {
             });
             return;
         }
+
+        if (!db || !storage) return;
 
         setIsLoading(true);
 

@@ -29,6 +29,7 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
     const router = useRouter();
 
     useEffect(() => {
+        if (!db) return;
         const fetchNote = async () => {
             const noteDoc = doc(db, "notes", id);
             const noteSnapshot = await getDoc(noteDoc);
@@ -48,6 +49,7 @@ export default function EditNotePage({ params }: { params: { id: string } }) {
     }, [id, router]);
 
     const handleUpdateNote = async () => {
+        if (!db) return;
         try {
             const noteDoc = doc(db, "notes", id);
             await updateDoc(noteDoc, {

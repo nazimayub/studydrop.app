@@ -2,7 +2,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { doc, getDoc, updateDoc, increment, runTransaction, onSnapshot } from "firebase/firestore"
+import { doc, getDoc, runTransaction, onSnapshot, increment } from "firebase/firestore"
 import { db, auth } from "@/lib/firebase/firebase"
 import { useAuthState } from "react-firebase-hooks/auth"
 import Link from "next/link"
@@ -43,7 +43,7 @@ interface UserVote {
 
 export default function NoteDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
-  const [user] = useAuthState(auth);
+  const [user] = auth ? useAuthState(auth) : [null];
   const [note, setNote] = useState<Note | null>(null);
   const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
   const { toast } = useToast();
@@ -137,8 +137,7 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
             });
 
             if (pointsChange !== 0) {
-                const newPoints = currentPoints + pointsChange;
-                transaction.update(authorRef, { points: newPoints });
+                transaction.update(authorRef, { points: currentPoints + pointsChange });
             }
         });
     } catch (error) {

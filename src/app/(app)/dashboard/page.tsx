@@ -68,13 +68,13 @@ interface RecentActivity {
 }
 
 export default function Dashboard() {
-  const [user] = useAuthState(auth);
+  const [user] = auth ? useAuthState(auth) : [null];
   const [stats, setStats] = useState({ notes: 0, questions: 0, answers: 0, points: 0 });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [enrolledClasses, setEnrolledClasses] = useState<string[]>([]);
 
   useEffect(() => {
-    if (user) {
+    if (user && db) {
         const userDocRef = doc(db, "users", user.uid);
 
         const fetchAllActivity = async () => {

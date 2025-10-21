@@ -38,6 +38,15 @@ export default function SignupPage() {
             return;
         }
 
+        if (!auth || !db) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Firebase is not configured correctly.",
+            });
+            return;
+        }
+
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
@@ -81,6 +90,15 @@ export default function SignupPage() {
     }
 
     const handleGoogleSignUp = async () => {
+        if (!auth || !db) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Firebase is not configured correctly.",
+            });
+            return;
+        }
+
         try {
             const provider = new GoogleAuthProvider();
             provider.setCustomParameters({ prompt: 'select_account' });

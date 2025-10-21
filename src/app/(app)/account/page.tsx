@@ -39,7 +39,7 @@ interface UserData {
 }
 
 export default function AccountPage() {
-    const [user] = useAuthState(auth);
+    const [user] = auth ? useAuthState(auth) : [null];
     const [userData, setUserData] = useState<UserData>({ 
         name: "", 
         email: "", 
@@ -57,7 +57,7 @@ export default function AccountPage() {
     const [open, setOpen] = useState(false)
 
     useEffect(() => {
-        if (user) {
+        if (user && db) {
             const fetchUserData = async () => {
                 const userDoc = doc(db, "users", user.uid);
                 const userSnapshot = await getDoc(userDoc);
@@ -94,7 +94,7 @@ export default function AccountPage() {
     }
 
     const handleSaveChanges = async () => {
-        if (!user) return;
+        if (!user || !db || !storage || !auth) return;
         
         try {
             let photoURL = userData.photoURL;

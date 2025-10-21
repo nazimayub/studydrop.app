@@ -13,14 +13,14 @@ import { useToast } from "@/hooks/use-toast";
 
 
 export function NotificationBell() {
-    const [user] = useAuthState(auth);
+    const [user] = auth ? useAuthState(auth) : [null];
     const [unreadCount, setUnreadCount] = useState(0);
     const [notifications, setNotifications] = useState<any[]>([]);
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
-        if (user) {
+        if (user && db) {
             const notificationsRef = collection(db, "users", user.uid, "notifications");
             const q = query(notificationsRef, where("isRead", "==", false));
             const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -34,7 +34,7 @@ export function NotificationBell() {
     
     useEffect(() => {
         const requestPermission = async () => {
-            if (!messaging || !user) return;
+            if (!messaging || !user || !db) return;
             
             try {
                 const permission = await Notification.requestPermission();
@@ -56,7 +56,7 @@ export function NotificationBell() {
     }, [user, toast]);
 
     const handleBellClick = async () => {
-        if (!user) return;
+        if (!user || !db) return;
 
         if (isPopoverOpen && notifications.length > 0) {
              const notificationsRef = collection(db, "users", user.uid, "notifications");

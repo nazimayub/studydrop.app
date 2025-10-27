@@ -149,7 +149,7 @@ export default function SignupPage() {
     };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-secondary/50 p-4">
+    <div className="flex w-full flex-col items-center justify-center min-h-screen bg-secondary/50 p-4">
       <div className="mb-8">
         <Link href="/">
            <Logo className="w-48" />

@@ -18,6 +18,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, File as FileIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
+import { LoadingButton } from "@/components/ui/loading-button";
+
 
 const ALLOWED_FILE_TYPES = ['image/png', 'image/jpeg', 'application/pdf'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -32,6 +35,7 @@ export default function NewNotePage() {
     const [content, setContent] = useState("");
     const [tags, setTags] = useState<Tag[]>([]);
     const [attachment, setAttachment] = useState<File | null>(null);
+    const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
     
     const [selectedClass, setSelectedClass] = useState("");
     const [availableUnits, setAvailableUnits] = useState<string[]>([]);
@@ -73,15 +77,27 @@ export default function NewNotePage() {
                 toast({ variant: "destructive", title: "File too large", description: `Please select a file smaller than ${MAX_FILE_SIZE / 1024 / 1024}MB.` });
                 e.target.value = '';
                 setAttachment(null);
+                setAttachmentPreview(null);
                 return;
             }
             if (!ALLOWED_FILE_TYPES.includes(file.type)) {
                 toast({ variant: "destructive", title: "Invalid file type", description: "Please select a PNG, JPG, or PDF file." });
                 e.target.value = '';
                 setAttachment(null);
+                setAttachmentPreview(null);
                 return;
             }
             setAttachment(file);
+
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setAttachmentPreview(reader.result as string);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                setAttachmentPreview('pdf'); // Special string for PDF preview
+            }
         }
     };
 
@@ -101,7 +117,6 @@ export default function NewNotePage() {
         setIsLoading(true);
 
         try {
-            // 1. Create document in a transaction to get points
             const newNoteRef = await runTransaction(db, async (transaction) => {
                 const userDocRef = doc(db, "users", user.uid);
                 const userDoc = await transaction.get(userDocRef);
@@ -114,7 +129,7 @@ export default function NewNotePage() {
                     title,
                     content,
                     tags,
-                    date: new Date().toISOString(),
+                    date: serverTimestamp(),
                     authorId: user.uid,
                     authorName: user.displayName || "Anonymous",
                     isPublic: true,
@@ -126,13 +141,10 @@ export default function NewNotePage() {
                 return noteRef;
             });
             
-            // 2. Upload attachment if it exists
             if (attachment) {
                 const storageRef = ref(storage, `attachments/notes/${user.uid}/${newNoteRef.id}_${attachment.name}`);
                 await uploadBytes(storageRef, attachment);
                 const attachmentURL = await getDownloadURL(storageRef);
-
-                // 3. Update document with the attachment URL
                 await updateDoc(newNoteRef, { attachmentURL });
             }
             
@@ -208,14 +220,26 @@ export default function NewNotePage() {
                     <div className="grid gap-2">
                         <Label htmlFor="attachment">Attachment (PNG, JPG, PDF up to 5MB)</Label>
                         <Input id="attachment" type="file" onChange={handleFileChange} accept={ALLOWED_FILE_TYPES.join(',')} />
-                         {attachment && (
-                            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md">
-                                <FileIcon className="h-4 w-4" />
-                                <span>{attachment.name}</span>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => {
-                                    setAttachment(null);
-                                    (document.getElementById('attachment') as HTMLInputElement).value = '';
-                                }}>
+                         {attachmentPreview && (
+                            <div className="mt-4 p-2 border rounded-md relative w-fit">
+                                {attachmentPreview === 'pdf' ? (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground p-2">
+                                        <FileIcon className="h-10 w-10" />
+                                        <span className="font-semibold">{attachment?.name}</span>
+                                    </div>
+                                ) : (
+                                    <Image src={attachmentPreview} alt="Attachment preview" width={200} height={200} className="rounded-md object-cover" />
+                                )}
+                                <Button
+                                    variant="destructive"
+                                    size="icon"
+                                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                                    onClick={() => {
+                                        setAttachment(null);
+                                        setAttachmentPreview(null);
+                                        (document.getElementById('attachment') as HTMLInputElement).value = '';
+                                    }}
+                                >
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -223,13 +247,11 @@ export default function NewNotePage() {
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end">
-                    <Button onClick={handleCreateNote} disabled={isLoading}>
-                        {isLoading ? "Creating..." : "Create Note"}
-                    </Button>
+                    <LoadingButton loading={isLoading} onClick={handleCreateNote}>
+                        Create Note
+                    </LoadingButton>
                 </CardFooter>
             </Card>
         </div>
     );
 }
-
-    

@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment, runTransaction } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -19,6 +19,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, File as FileIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { LoadingButton } from "@/components/ui/loading-button";
+import Image from "next/image";
+
 
 const ALLOWED_FILE_TYPES = ['image/png', 'image/jpeg', 'application/pdf'];
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -34,6 +37,7 @@ export default function NewQuestionPage() {
     const [description, setDescription] = useState("");
     const [isAnonymous, setIsAnonymous] = useState(false);
     const [attachment, setAttachment] = useState<File | null>(null);
+    const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
     const [user] = useAuthState(auth);
@@ -74,15 +78,27 @@ export default function NewQuestionPage() {
                 toast({ variant: "destructive", title: "File too large", description: `Please select a file smaller than ${MAX_FILE_SIZE / 1024 / 1024}MB.` });
                 e.target.value = '';
                 setAttachment(null);
+                setAttachmentPreview(null);
                 return;
             }
             if (!ALLOWED_FILE_TYPES.includes(file.type)) {
                 toast({ variant: "destructive", title: "Invalid file type", description: "Please select a PNG, JPG, or PDF file." });
                 e.target.value = '';
                 setAttachment(null);
+                setAttachmentPreview(null);
                 return;
             }
             setAttachment(file);
+            
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setAttachmentPreview(reader.result as string);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                setAttachmentPreview('pdf');
+            }
         }
     };
 
@@ -135,6 +151,7 @@ export default function NewQuestionPage() {
                 await updateDoc(newQuestionRef, { attachmentURL });
             }
 
+            toast({ title: "Question Posted!", description: "Your question is now live in the forum." });
             router.push("/forum");
         } catch (error) {
             console.error("Error posting question: ", error);
@@ -205,14 +222,26 @@ export default function NewQuestionPage() {
                     <div className="grid gap-2">
                         <Label htmlFor="attachment">Attachment (PNG, JPG, PDF up to 5MB)</Label>
                         <Input id="attachment" type="file" onChange={handleFileChange} accept={ALLOWED_FILE_TYPES.join(',')} />
-                         {attachment && (
-                            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md">
-                                <FileIcon className="h-4 w-4" />
-                                <span>{attachment.name}</span>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => {
-                                    setAttachment(null);
-                                    (document.getElementById('attachment') as HTMLInputElement).value = '';
-                                }}>
+                        {attachmentPreview && (
+                            <div className="mt-4 p-2 border rounded-md relative w-fit">
+                                {attachmentPreview === 'pdf' ? (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground p-2">
+                                        <FileIcon className="h-10 w-10" />
+                                        <span className="font-semibold">{attachment?.name}</span>
+                                    </div>
+                                ) : (
+                                    <Image src={attachmentPreview} alt="Attachment preview" width={200} height={200} className="rounded-md object-cover" />
+                                )}
+                                <Button
+                                    variant="destructive"
+                                    size="icon"
+                                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                                    onClick={() => {
+                                        setAttachment(null);
+                                        setAttachmentPreview(null);
+                                        (document.getElementById('attachment') as HTMLInputElement).value = '';
+                                    }}
+                                >
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -224,13 +253,11 @@ export default function NewQuestionPage() {
                     </div>
                 </CardContent>
                 <CardFooter className="flex justify-end">
-                    <Button onClick={handlePostQuestion} disabled={isLoading}>
-                       {isLoading ? "Posting..." : "Post Question"}
-                    </Button>
+                    <LoadingButton loading={isLoading} onClick={handlePostQuestion}>
+                       Post Question
+                    </LoadingButton>
                 </CardFooter>
             </Card>
         </div>
     )
 }
-
-    

@@ -39,6 +39,11 @@ function AppLayoutContent({
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
@@ -49,34 +54,36 @@ function AppLayoutContent({
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
-        <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
-          <TooltipProvider>
-            <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
-              <Link
-                href="/dashboard"
-                className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
-              >
-                <Logo variant="icon" />
-                <span className="sr-only">opendesk</span>
-              </Link>
-              <AppNav />
-            </nav>
-            <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link
-                    href="/account"
-                    className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
-                  >
-                    <Settings className="h-5 w-5" />
-                    <span className="sr-only">Settings</span>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side="right">Settings</TooltipContent>
-              </Tooltip>
-            </nav>
-          </TooltipProvider>
-        </aside>
+        {isClient && (
+          <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
+            <TooltipProvider>
+              <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
+                <Link
+                  href="/dashboard"
+                  className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
+                >
+                  <Logo variant="icon" />
+                  <span className="sr-only">opendesk</span>
+                </Link>
+                <AppNav />
+              </nav>
+              <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href="/account"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+                    >
+                      <Settings className="h-5 w-5" />
+                      <span className="sr-only">Settings</span>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Settings</TooltipContent>
+                </Tooltip>
+              </nav>
+            </TooltipProvider>
+          </aside>
+        )}
         <div className="flex flex-col sm:pl-14">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
             <Sheet>

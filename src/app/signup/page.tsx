@@ -71,34 +71,36 @@ export default function SignupPage() {
                     commentsOnNotes: true,
                     answersOnQuestions: true,
                     repliesToComments: true,
-                }
+                },
+                enrolledClasses: [],
+                unlockedThemes: ['default'],
+                activeTheme: 'default',
             });
 
             router.push("/dashboard");
         } catch (error: any) {
             console.error("Error signing up: ", error);
+            setIsLoading(false); // Stop loading on error
             if (error.code === 'auth/email-already-in-use') {
                 toast({
                     variant: "destructive",
                     title: "Email Already Exists",
                     description: "This email address is already in use. Please login instead.",
                 });
-            } else if (error.code === 'auth/invalid-credential') {
+            } else if (error.code === 'auth/weak-password') {
                  toast({
                     variant: "destructive",
-                    title: "Sign-up Failed",
-                    description: "Please check your email and password.",
+                    title: "Weak Password",
+                    description: "Password should be at least 6 characters.",
                 });
             }
              else {
                 toast({
                     variant: "destructive",
                     title: "Sign-up Failed",
-                    description: error.message || "An unexpected error occurred. Please try again.",
+                    description: error.message || "An unexpected error occurred. Please check your configuration and try again.",
                 });
             }
-        } finally {
-            setIsLoading(false);
         }
     }
 
@@ -138,13 +140,17 @@ export default function SignupPage() {
                         commentsOnNotes: true,
                         answersOnQuestions: true,
                         repliesToComments: true,
-                    }
+                    },
+                    enrolledClasses: [],
+                    unlockedThemes: ['default'],
+                    activeTheme: 'default',
                 });
             }
 
             router.push("/dashboard");
         } catch (error: any) {
             console.error("Error with Google signup: ", error);
+            setIsGoogleLoading(false); // Stop loading on error
              if (error.code === 'auth/popup-closed-by-user') {
                  toast({
                     variant: "destructive",
@@ -156,10 +162,8 @@ export default function SignupPage() {
             toast({
                 variant: "destructive",
                 title: "Google Sign-up Failed",
-                description: "There was a problem signing up with Google. Please try again.",
+                description: "There was a problem signing up with Google. Please check your configuration and try again.",
             });
-        } finally {
-            setIsGoogleLoading(false);
         }
     };
 

@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
 import { Analytics } from '@vercel/analytics/react';
-import { SidebarProvider } from '@/components/ui/sidebar';
 
 export const metadata: Metadata = {
   title: 'Study Buddy',
@@ -29,9 +28,7 @@ export default function RootLayout({
       </head>
       <body className={cn('h-full bg-background font-body antialiased')}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <SidebarProvider>
-            {children}
-          </SidebarProvider>
+          {children}
           <Toaster />
         </ThemeProvider>
         <Analytics />

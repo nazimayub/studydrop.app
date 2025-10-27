@@ -36,6 +36,10 @@ interface ForumPost {
     date: any;
 }
 
+const UserLink = ({ authorId, children }: { authorId?: string, children: React.ReactNode }) => {
+    return authorId ? <Link href={`/users/${authorId}`} className="hover:underline">{children}</Link> : <>{children}</>;
+};
+
 export default function ForumPage() {
     const [allPosts, setAllPosts] = useState<ForumPost[]>([]);
     const [filteredPosts, setFilteredPosts] = useState<ForumPost[]>([]);
@@ -62,7 +66,7 @@ export default function ForumPage() {
     }, []);
 
     useEffect(() => {
-        let posts = allPosts;
+        let posts = [...allPosts];
         if (searchTerm) {
             posts = posts.filter(post => post.title.toLowerCase().includes(searchTerm.toLowerCase()));
         }
@@ -86,7 +90,7 @@ export default function ForumPage() {
             return 0;
         });
 
-        setFilteredPosts([...posts]);
+        setFilteredPosts(posts);
     }, [searchTerm, activeFilters, allPosts, sortOrder]);
     
      useEffect(() => {
@@ -111,10 +115,6 @@ export default function ForumPage() {
 
     const handleRemoveFilter = (filterToRemove: ForumPostTag) => {
         setActiveFilters(activeFilters.filter(f => !(f.class === filterToRemove.class && f.topic === filterToRemove.topic)));
-    };
-    
-    const UserLink = ({ authorId, children }: { authorId?: string, children: React.ReactNode }) => {
-        return authorId ? <Link href={`/users/${authorId}`} className="hover:underline">{children}</Link> : <>{children}</>;
     };
 
   return (
@@ -218,7 +218,7 @@ export default function ForumPage() {
                                 ))}
                             </div>
                             <p className="text-sm text-muted-foreground mt-1 hidden sm:block">
-                                Asked by <UserLink authorId={post.authorId}>{post.author}</Link> on {new Date(post.date?.seconds * 1000).toLocaleDateString()}
+                                Asked by <UserLink authorId={post.authorId}>{post.author}</UserLink> on {new Date(post.date?.seconds * 1000).toLocaleDateString()}
                             </p>
                         </div>
                          <div className="flex items-center justify-end gap-4 text-sm text-muted-foreground w-full sm:w-auto mt-2 sm:mt-0">

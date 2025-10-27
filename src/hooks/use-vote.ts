@@ -38,7 +38,7 @@ export function useVote({
 
     // Listen for real-time vote updates on the content
     useEffect(() => {
-        if (!db) return;
+        if (!db || !contentId || !collectionPath) return;
         const contentRef = doc(db, collectionPath, contentId);
         const unsubscribe = onSnapshot(contentRef, (docSnap) => {
             if (docSnap.exists()) {
@@ -52,7 +52,7 @@ export function useVote({
 
     // Listen for real-time updates on the user's vote
     useEffect(() => {
-        if (!db || !user) {
+        if (!db || !user || !contentId || !contentType) {
             setUserVote(null);
             return;
         }
@@ -69,6 +69,10 @@ export function useVote({
         if (!user || !db) {
             toast({ variant: "destructive", title: "Login Required" });
             return;
+        }
+        if (!authorId) {
+             toast({ variant: "destructive", description: `Cannot vote, author information is missing.` });
+             return;
         }
         if (user.uid === authorId) {
             toast({ variant: "destructive", description: `You cannot vote on your own ${contentType}.` });
@@ -89,31 +93,39 @@ export function useVote({
                 let downvoteInc = 0;
                 let pointsChange = 0;
 
-                if (currentVote === voteType) { // Undoing vote
+                // Scenario 1: User is undoing their vote
+                if (currentVote === voteType) { 
                     transaction.delete(userVoteRef);
                     if (voteType === 'up') {
                         upvoteInc = -1;
                         pointsChange = -points.up;
-                    } else {
+                    } else { // Undoing a downvote
                         downvoteInc = -1;
                         pointsChange = -points.down;
                     }
-                } else { // New vote or changing vote
+                } 
+                // Scenario 2: User is changing their vote (e.g., from down to up)
+                else if (currentVote) {
                     transaction.set(userVoteRef, { type: voteType });
-                    if (currentVote === 'up') {
-                        upvoteInc = -1;
-                        pointsChange = -points.up;
-                    } else if (currentVote === 'down') {
+                     if (voteType === 'up') { // Changing to upvote
+                        upvoteInc = 1;
                         downvoteInc = -1;
-                        pointsChange = -points.down;
+                        pointsChange = points.up - points.down;
+                    } else { // Changing to downvote
+                        upvoteInc = -1;
+                        downvoteInc = 1;
+                        pointsChange = points.down - points.up;
                     }
-
+                }
+                // Scenario 3: User is casting a new vote
+                else {
+                    transaction.set(userVoteRef, { type: voteType });
                     if (voteType === 'up') {
-                        upvoteInc += 1;
-                        pointsChange += points.up;
-                    } else {
-                        downvoteInc += 1;
-                        pointsChange += points.down;
+                        upvoteInc = 1;
+                        pointsChange = points.up;
+                    } else { // New downvote
+                        downvoteInc = 1;
+                        pointsChange = points.down;
                     }
                 }
                 
@@ -139,3 +151,5 @@ export function useVote({
         handleVote,
     };
 }
+
+    

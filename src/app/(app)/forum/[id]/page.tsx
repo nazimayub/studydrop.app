@@ -80,7 +80,8 @@ function AnswerComponent({ answer, postId, postAuthorId }: { answer: Answer, pos
                 const questionRef = doc(db, "questions", postId);
                 const questionDoc = await transaction.get(questionRef);
                 const answersRef = collection(db, "questions", postId, "answers");
-                const answersSnapshot = await getDocs(query(answersRef));
+                const answersQuery = query(answersRef);
+                const answersSnapshot = await getDocs(answersQuery);
 
                 for (const answerDoc of answersSnapshot.docs) {
                     const currentAnswer = { id: answerDoc.id, ...answerDoc.data() } as Answer;
@@ -232,10 +233,14 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         if (file) {
             if (file.size > MAX_FILE_SIZE) {
                 toast({ variant: "destructive", title: "File too large", description: `Please select a file smaller than ${MAX_FILE_SIZE / 1024 / 1024}MB.` });
+                e.target.value = '';
+                setAttachment(null);
                 return;
             }
             if (!ALLOWED_FILE_TYPES.includes(file.type)) {
                 toast({ variant: "destructive", title: "Invalid file type", description: "Please select a PNG, JPG, or PDF file." });
+                e.target.value = '';
+                setAttachment(null);
                 return;
             }
             setAttachment(file);
@@ -243,17 +248,9 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     };
     const handlePostAnswer = async () => {
         if (!newAnswer.trim() || !user || !post || !db || !storage) return;
-        const newAnswerRef = doc(collection(db, "questions", id, "answers"));
 
         try {
-            // Upload attachment in parallel
-            const uploadPromise = attachment ? (async () => {
-                const storageRef = ref(storage, `attachments/answers/${user.uid}/${newAnswerRef.id}_${attachment.name}`);
-                await uploadBytes(storageRef, attachment);
-                return await getDownloadURL(storageRef);
-            })() : Promise.resolve(null);
-
-            const transactionPromise = runTransaction(db, async (transaction) => {
+            const newAnswerRef = await runTransaction(db, async (transaction) => {
                 const userDocRef = doc(db, "users", user.uid);
                 const userDoc = await transaction.get(userDocRef);
                 if (!userDoc.exists()) throw "User does not exist!";
@@ -266,7 +263,8 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 transaction.update(userDocRef, { points: increment(15) });
                 transaction.update(doc(db, "questions", id), { replies: increment(1) });
                 
-                transaction.set(newAnswerRef, {
+                const answerRef = doc(collection(db, "questions", id, "answers"));
+                transaction.set(answerRef, {
                     author: authorName,
                     avatar: authorAvatar,
                     fallback: authorFallback,
@@ -276,7 +274,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                     downvotes: 0,
                     authorId: user.uid,
                     isAccepted: false,
-                    attachmentURL: "", // Placeholder
+                    attachmentURL: "",
                     attachmentName: attachment?.name || "",
                 });
 
@@ -290,11 +288,13 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                         date: serverTimestamp(),
                     });
                 }
+                return answerRef;
             });
 
-            const [attachmentURL] = await Promise.all([uploadPromise, transactionPromise]);
-            
-            if (attachmentURL) {
+            if (attachment) {
+                 const storageRef = ref(storage, `attachments/answers/${user.uid}/${newAnswerRef.id}_${attachment.name}`);
+                await uploadBytes(storageRef, attachment);
+                const attachmentURL = await getDownloadURL(storageRef);
                 await updateDoc(newAnswerRef, { attachmentURL });
             }
 
@@ -396,7 +396,10 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                             <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md">
                                 <FileIcon className="h-4 w-4" />
                                 <span>{attachment.name}</span>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => setAttachment(null)}>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => {
+                                    setAttachment(null);
+                                    (document.getElementById('attachment-answer') as HTMLInputElement).value = '';
+                                }}>
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -412,3 +415,5 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
         </div>
     )
 }
+
+    

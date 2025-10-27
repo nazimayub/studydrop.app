@@ -22,6 +22,7 @@ interface UserData {
     points: number;
     photoURL?: string;
     unlockedThemes?: string[];
+    activeTheme?: string;
 }
 
 interface Badge {
@@ -113,14 +114,14 @@ export default function RewardsPage() {
     };
     
     useEffect(() => {
-        constfetchAllData = async () => {
+        const fetchAllData = async () => {
             await fetchLeaderboard();
             if (user) {
                 await fetchUserData();
             }
         }
         fetchAllData().catch(err => {
-            if (err.code === 'permission-denied') {
+            if ((err as any).code === 'permission-denied') {
                 toast({
                     variant: "destructive",
                     title: "Permissions Error",
@@ -261,7 +262,7 @@ export default function RewardsPage() {
                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {THEMES.map(theme => {
                         const isUnlocked = currentUserData?.unlockedThemes?.includes(theme.id) || theme.cost === 0;
-                        const isActive = (currentUserData as any)?.activeTheme === theme.id;
+                        const isActive = currentUserData?.activeTheme === theme.id;
                         return (
                             <Card key={theme.id} className={cn("flex flex-col", isActive && "border-primary")}>
                                 <CardHeader>
@@ -310,3 +311,5 @@ export default function RewardsPage() {
     </div>
   )
 }
+
+    

@@ -72,10 +72,14 @@ export default function NewQuestionPage() {
         if (file) {
             if (file.size > MAX_FILE_SIZE) {
                 toast({ variant: "destructive", title: "File too large", description: `Please select a file smaller than ${MAX_FILE_SIZE / 1024 / 1024}MB.` });
+                e.target.value = '';
+                setAttachment(null);
                 return;
             }
             if (!ALLOWED_FILE_TYPES.includes(file.type)) {
                 toast({ variant: "destructive", title: "Invalid file type", description: "Please select a PNG, JPG, or PDF file." });
+                e.target.value = '';
+                setAttachment(null);
                 return;
             }
             setAttachment(file);
@@ -92,16 +96,9 @@ export default function NewQuestionPage() {
         if (!db || !storage) return;
 
         setIsLoading(true);
-        const newQuestionRef = doc(collection(db, "questions"));
 
         try {
-            const uploadPromise = attachment ? (async () => {
-                const storageRef = ref(storage, `attachments/questions/${user.uid}/${newQuestionRef.id}_${attachment.name}`);
-                await uploadBytes(storageRef, attachment);
-                return await getDownloadURL(storageRef);
-            })() : Promise.resolve(null);
-            
-            const transactionPromise = runTransaction(db, async (transaction) => {
+            const newQuestionRef = await runTransaction(db, async (transaction) => {
                 let authorName = "Anonymous";
                 let authorFallback = "A";
                 let authorAvatar = "";
@@ -118,20 +115,23 @@ export default function NewQuestionPage() {
                     }
                 }
                 
-                transaction.set(newQuestionRef, {
+                const questionRef = doc(collection(db, "questions"));
+                transaction.set(questionRef, {
                     title, tags, content: description,
                     authorId: isAnonymous ? null : user.uid,
                     author: authorName, avatar: authorAvatar, fallback: authorFallback,
                     date: serverTimestamp(),
                     views: 0, replies: 0, upvotes: 0, downvotes: 0,
-                    attachmentURL: "", // Placeholder
+                    attachmentURL: "",
                     attachmentName: attachment?.name || "",
                 });
+                return questionRef;
             });
-
-            const [attachmentURL] = await Promise.all([uploadPromise, transactionPromise]);
             
-            if (attachmentURL) {
+            if (attachment) {
+                const storageRef = ref(storage, `attachments/questions/${user.uid}/${newQuestionRef.id}_${attachment.name}`);
+                await uploadBytes(storageRef, attachment);
+                const attachmentURL = await getDownloadURL(storageRef);
                 await updateDoc(newQuestionRef, { attachmentURL });
             }
 
@@ -187,7 +187,7 @@ export default function NewQuestionPage() {
                                  <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedClass}>
                                     <SelectTrigger id="unit-select">
                                         <SelectValue placeholder="Select a Unit" />
-                                    </Trigger>
+                                    </SelectTrigger>
                                     <SelectContent>
                                         {availableUnits.map(unit => (
                                             <SelectItem key={unit} value={unit}>{unit}</SelectItem>
@@ -209,7 +209,10 @@ export default function NewQuestionPage() {
                             <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md">
                                 <FileIcon className="h-4 w-4" />
                                 <span>{attachment.name}</span>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => setAttachment(null)}>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => {
+                                    setAttachment(null);
+                                    (document.getElementById('attachment') as HTMLInputElement).value = '';
+                                }}>
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -229,3 +232,5 @@ export default function NewQuestionPage() {
         </div>
     )
 }
+
+    

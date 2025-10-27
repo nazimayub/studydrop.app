@@ -71,10 +71,14 @@ export default function NewNotePage() {
         if (file) {
             if (file.size > MAX_FILE_SIZE) {
                 toast({ variant: "destructive", title: "File too large", description: `Please select a file smaller than ${MAX_FILE_SIZE / 1024 / 1024}MB.` });
+                e.target.value = '';
+                setAttachment(null);
                 return;
             }
             if (!ALLOWED_FILE_TYPES.includes(file.type)) {
                 toast({ variant: "destructive", title: "Invalid file type", description: "Please select a PNG, JPG, or PDF file." });
+                e.target.value = '';
+                setAttachment(null);
                 return;
             }
             setAttachment(file);
@@ -95,23 +99,18 @@ export default function NewNotePage() {
         if (!db || !storage) return;
 
         setIsLoading(true);
-        const newNoteRef = doc(collection(db, "notes"));
 
         try {
-            const uploadPromise = attachment ? (async () => {
-                const storageRef = ref(storage, `attachments/notes/${user.uid}/${newNoteRef.id}_${attachment.name}`);
-                await uploadBytes(storageRef, attachment);
-                return await getDownloadURL(storageRef);
-            })() : Promise.resolve(null);
-            
-            const transactionPromise = runTransaction(db, async (transaction) => {
+            // 1. Create document in a transaction to get points
+            const newNoteRef = await runTransaction(db, async (transaction) => {
                 const userDocRef = doc(db, "users", user.uid);
                 const userDoc = await transaction.get(userDocRef);
                 if (!userDoc.exists()) throw "User does not exist!";
                 
                 transaction.update(userDocRef, { points: (userDoc.data().points || 0) + 10 });
-
-                transaction.set(newNoteRef, {
+                
+                const noteRef = doc(collection(db, "notes"));
+                transaction.set(noteRef, {
                     title,
                     content,
                     tags,
@@ -121,14 +120,19 @@ export default function NewNotePage() {
                     isPublic: true,
                     upvotes: 0,
                     downvotes: 0,
-                    attachmentURL: "", // Placeholder
+                    attachmentURL: "",
                     attachmentName: attachment?.name || "",
                 });
+                return noteRef;
             });
-
-            const [attachmentURL] = await Promise.all([uploadPromise, transactionPromise]);
             
-            if (attachmentURL) {
+            // 2. Upload attachment if it exists
+            if (attachment) {
+                const storageRef = ref(storage, `attachments/notes/${user.uid}/${newNoteRef.id}_${attachment.name}`);
+                await uploadBytes(storageRef, attachment);
+                const attachmentURL = await getDownloadURL(storageRef);
+
+                // 3. Update document with the attachment URL
                 await updateDoc(newNoteRef, { attachmentURL });
             }
             
@@ -208,7 +212,10 @@ export default function NewNotePage() {
                             <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md">
                                 <FileIcon className="h-4 w-4" />
                                 <span>{attachment.name}</span>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => setAttachment(null)}>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => {
+                                    setAttachment(null);
+                                    (document.getElementById('attachment') as HTMLInputElement).value = '';
+                                }}>
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -224,3 +231,5 @@ export default function NewNotePage() {
         </div>
     );
 }
+
+    

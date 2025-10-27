@@ -186,7 +186,7 @@ export default function NewNotePage() {
                                  <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedClass}>
                                     <SelectTrigger id="unit-select">
                                         <SelectValue placeholder="Select a Unit" />
-                                    </Trigger>
+                                    </SelectTrigger>
                                     <SelectContent>
                                         {availableUnits.map(unit => (
                                             <SelectItem key={unit} value={unit}>{unit}</SelectItem>

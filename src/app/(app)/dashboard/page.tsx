@@ -167,152 +167,150 @@ export default function Dashboard() {
   }, [user]);
 
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <div className="mb-4">
-            <h1 className="text-3xl font-bold font-headline">Glad to see you, {user?.displayName?.split(' ')[0] || 'User'}!</h1>
-            <p className="text-muted-foreground">Here's what's happening in your community.</p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Your Notes
-              </CardTitle>
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.notes}</div>
-              <p className="text-xs text-muted-foreground">
-                Total notes you've created
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Your Questions
-              </CardTitle>
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.questions}</div>
-              <p className="text-xs text-muted-foreground">
-                Total questions you've asked
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Your Answers</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.answers}</div>
-              <p className="text-xs text-muted-foreground">
-                Total answers you've provided
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Points Earned</CardTitle>
-              <Award className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.points.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
-                Keep contributing to earn more!
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-        <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
-          <Card className="xl:col-span-2">
-            <CardHeader className="flex flex-row items-center">
-              <div className="grid gap-2">
-                <CardTitle>Catch Up Feed</CardTitle>
-                <CardDescription>
-                  {enrolledClasses.length > 0
-                    ? "Recent notes and questions from your classes."
-                    : "Recent notes and questions from all classes. Add classes in your account to filter this feed."
-                  }
-                </CardDescription>
-              </div>
-              <Button asChild size="sm" className="ml-auto gap-1">
-                <Link href="/activity">
-                  View All
-                  <ArrowUpRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Activity</TableHead>
-                      <TableHead className="hidden sm:table-cell">Tags</TableHead>
-                      <TableHead className="hidden sm:table-cell">Type</TableHead>
-                      <TableHead className="text-right">Date</TableHead>
+    <div className="flex flex-1 flex-col gap-4 md:gap-8">
+      <div className="mb-4">
+          <h1 className="text-3xl font-bold font-headline">Glad to see you, {user?.displayName?.split(' ')[0] || 'User'}!</h1>
+          <p className="text-muted-foreground">Here's what's happening in your community.</p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Your Notes
+            </CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.notes}</div>
+            <p className="text-xs text-muted-foreground">
+              Total notes you've created
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Your Questions
+            </CardTitle>
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.questions}</div>
+            <p className="text-xs text-muted-foreground">
+              Total questions you've asked
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Your Answers</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.answers}</div>
+            <p className="text-xs text-muted-foreground">
+              Total answers you've provided
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Points Earned</CardTitle>
+            <Award className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.points.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              Keep contributing to earn more!
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+      <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
+        <Card className="xl:col-span-2">
+          <CardHeader className="flex flex-row items-center">
+            <div className="grid gap-2">
+              <CardTitle>Catch Up Feed</CardTitle>
+              <CardDescription>
+                {enrolledClasses.length > 0
+                  ? "Recent notes and questions from your classes."
+                  : "Recent notes and questions from all classes. Add classes in your account to filter this feed."
+                }
+              </CardDescription>
+            </div>
+            <Button asChild size="sm" className="ml-auto gap-1">
+              <Link href="/activity">
+                View All
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Activity</TableHead>
+                    <TableHead className="hidden sm:table-cell">Tags</TableHead>
+                    <TableHead className="hidden sm:table-cell">Type</TableHead>
+                    <TableHead className="text-right">Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentActivity.map(activity => (
+                    <TableRow key={activity.id}>
+                        <TableCell>
+                            {activity.authorId ? (
+                                  <Link href={`/users/${activity.authorId}`} className="font-medium hover:underline">{activity.author}</Link>
+                            ) : (
+                                <div className="font-medium">{activity.author}</div>
+                            )}
+                        </TableCell>
+                        <TableCell>
+                              <Link href={activity.type === 'Note' ? `/notes/${activity.id}` : `/forum/${activity.id}`} className="font-medium hover:underline">
+                                {activity.title}
+                            </Link>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <div className="flex flex-wrap gap-1">
+                            {activity.tags?.map((tag, index) => (
+                              <Badge key={index} variant="secondary">
+                                {`${tag.class}: ${tag.topic}`}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                        <Badge className="text-xs" variant="outline">
+                            {activity.type}
+                        </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{activity.date ? activity.date.toLocaleDateString() : ''}</TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recentActivity.map(activity => (
-                      <TableRow key={activity.id}>
-                          <TableCell>
-                              {activity.authorId ? (
-                                   <Link href={`/users/${activity.authorId}`} className="font-medium hover:underline">{activity.author}</Link>
-                              ) : (
-                                  <div className="font-medium">{activity.author}</div>
-                              )}
-                          </TableCell>
-                          <TableCell>
-                               <Link href={activity.type === 'Note' ? `/notes/${activity.id}` : `/forum/${activity.id}`} className="font-medium hover:underline">
-                                  {activity.title}
-                              </Link>
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell">
-                            <div className="flex flex-wrap gap-1">
-                              {activity.tags?.map((tag, index) => (
-                                <Badge key={index} variant="secondary">
-                                  {`${tag.class}: ${tag.topic}`}
-                                </Badge>
-                              ))}
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell">
-                          <Badge className="text-xs" variant="outline">
-                              {activity.type}
-                          </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">{activity.date ? activity.date.toLocaleDateString() : ''}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-               <Link href="/notes/new">
-                <Button className="w-full">Create New Note</Button>
-               </Link>
-               <Link href="/forum/new">
-                <Button variant="outline" className="w-full">Ask a Question</Button>
-               </Link>
-                <Link href="/account">
-                <Button variant="outline" className="w-full"><UserIcon className="mr-2 h-4 w-4" /> My Account</Button>
-               </Link>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+              <Link href="/notes/new">
+              <Button className="w-full">Create New Note</Button>
+              </Link>
+              <Link href="/forum/new">
+              <Button variant="outline" className="w-full">Ask a Question</Button>
+              </Link>
+              <Link href="/account">
+              <Button variant="outline" className="w-full"><UserIcon className="mr-2 h-4 w-4" /> My Account</Button>
+              </Link>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

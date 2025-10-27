@@ -8,7 +8,7 @@ import { auth } from "@/lib/firebase/firebase"
 import { useToast } from "@/hooks/use-toast"
 
 
-import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import {
   Card,
   CardContent,
@@ -19,10 +19,13 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
+import { Button } from "@/components/ui/button"
 
 function LoginFormComponent() {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
+    const [isLoading, setIsLoading] = useState(false)
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false)
     const router = useRouter()
     const searchParams = useSearchParams()
     const redirectUrl = searchParams.get('redirect')
@@ -49,16 +52,27 @@ function LoginFormComponent() {
             });
             return;
         }
+        setIsLoading(true);
         try {
             await signInWithEmailAndPassword(auth, email, password);
             handleSuccess();
         } catch (error: any) {
             console.error("Error logging in: ", error);
-            toast({
-                variant: "destructive",
-                title: "Login Failed",
-                description: "Please check your credentials and try again.",
-            });
+             if (error.code === 'auth/invalid-credential') {
+                 toast({
+                    variant: "destructive",
+                    title: "Login Failed",
+                    description: "Please check your email and password.",
+                });
+             } else {
+                toast({
+                    variant: "destructive",
+                    title: "Login Failed",
+                    description: "Please check your credentials and try again.",
+                });
+             }
+        } finally {
+            setIsLoading(false);
         }
     }
 
@@ -71,6 +85,7 @@ function LoginFormComponent() {
             });
             return;
         }
+        setIsGoogleLoading(true);
         try {
             const provider = new GoogleAuthProvider();
             provider.setCustomParameters({ prompt: 'select_account' });
@@ -91,6 +106,8 @@ function LoginFormComponent() {
                 title: "Google Login Failed",
                 description: "There was a problem logging in with Google. Please try again.",
             });
+        } finally {
+            setIsGoogleLoading(false);
         }
     }
 
@@ -133,12 +150,12 @@ function LoginFormComponent() {
               </div>
               <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
             </div>
-            <Button onClick={handleLogin} className="w-full">
+            <LoadingButton onClick={handleLogin} loading={isLoading} className="w-full">
             Login
-            </Button>
-            <Button variant="outline" className="w-full" onClick={handleGoogleLogin}>
+            </LoadingButton>
+            <LoadingButton variant="outline" className="w-full" onClick={handleGoogleLogin} loading={isGoogleLoading}>
               Login with Google
-            </Button>
+            </LoadingButton>
           </div>
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{" "}

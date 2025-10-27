@@ -9,7 +9,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from "@/hooks/use-toast";
 import { courses } from "@/lib/courses";
 
-import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/ui/loading-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 
 interface NotificationPreferences {
@@ -53,6 +54,7 @@ export default function AccountPage() {
         enrolledClasses: [],
     });
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
     const [open, setOpen] = useState(false)
 
@@ -96,6 +98,7 @@ export default function AccountPage() {
     const handleSaveChanges = async () => {
         if (!user || !db || !storage || !auth) return;
         
+        setIsLoading(true);
         try {
             let photoURL = userData.photoURL;
 
@@ -137,6 +140,8 @@ export default function AccountPage() {
                 title: "Uh oh!",
                 description: "There was a problem saving your changes.",
             });
+        } finally {
+            setIsLoading(false);
         }
     };
     
@@ -300,7 +305,7 @@ export default function AccountPage() {
             </div>
         </CardContent>
       </Card>
-      <Button className="mt-4" onClick={handleSaveChanges}>Save Changes</Button>
+      <LoadingButton loading={isLoading} className="mt-4" onClick={handleSaveChanges}>Save Changes</LoadingButton>
     </div>
   )
 }

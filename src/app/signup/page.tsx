@@ -8,7 +8,7 @@ import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase/firebase"
 import { useToast } from "@/hooks/use-toast"
 
-import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import {
   Card,
   CardContent,
@@ -19,12 +19,15 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
+import { Button } from "@/components/ui/button"
 
 export default function SignupPage() {
     const [firstName, setFirstName] = useState("")
     const [lastName, setLastName] = useState("")
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
+    const [isLoading, setIsLoading] = useState(false)
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false)
     const router = useRouter()
     const { toast } = useToast()
 
@@ -47,6 +50,7 @@ export default function SignupPage() {
             return;
         }
 
+        setIsLoading(true);
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
@@ -79,13 +83,22 @@ export default function SignupPage() {
                     title: "Email Already Exists",
                     description: "This email address is already in use. Please login instead.",
                 });
-            } else {
+            } else if (error.code === 'auth/invalid-credential') {
+                 toast({
+                    variant: "destructive",
+                    title: "Sign-up Failed",
+                    description: "Please check your email and password.",
+                });
+            }
+             else {
                 toast({
                     variant: "destructive",
                     title: "Sign-up Failed",
                     description: error.message || "An unexpected error occurred. Please try again.",
                 });
             }
+        } finally {
+            setIsLoading(false);
         }
     }
 
@@ -98,7 +111,7 @@ export default function SignupPage() {
             });
             return;
         }
-
+        setIsGoogleLoading(true);
         try {
             const provider = new GoogleAuthProvider();
             provider.setCustomParameters({ prompt: 'select_account' });
@@ -145,6 +158,8 @@ export default function SignupPage() {
                 title: "Google Sign-up Failed",
                 description: "There was a problem signing up with Google. Please try again.",
             });
+        } finally {
+            setIsGoogleLoading(false);
         }
     };
 
@@ -189,12 +204,12 @@ export default function SignupPage() {
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}/>
             </div>
-            <Button onClick={handleSignUp} className="w-full">
+            <LoadingButton onClick={handleSignUp} loading={isLoading} className="w-full">
             Create an account
-            </Button>
-            <Button variant="outline" className="w-full" onClick={handleGoogleSignUp}>
+            </LoadingButton>
+            <LoadingButton variant="outline" className="w-full" onClick={handleGoogleSignUp} loading={isGoogleLoading}>
               Sign up with Google
-            </Button>
+            </LoadingButton>
           </div>
           <div className="mt-4 text-center text-sm">
             Already have an account?{" "}

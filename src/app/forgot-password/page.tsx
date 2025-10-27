@@ -6,7 +6,7 @@ import { sendPasswordResetEmail } from "firebase/auth"
 import { auth } from "@/lib/firebase/firebase"
 import { useToast } from "@/hooks/use-toast"
 
-import { Button } from "@/components/ui/button"
+import { LoadingButton } from "@/components/ui/loading-button"
 import {
   Card,
   CardContent,
@@ -17,10 +17,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
+import { Button } from "@/components/ui/button"
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState("")
     const [isSent, setIsSent] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
     const { toast } = useToast();
 
 
@@ -33,6 +35,7 @@ export default function ForgotPasswordPage() {
             });
             return;
         }
+        setIsLoading(true);
         try {
             await sendPasswordResetEmail(auth, email);
             setIsSent(true)
@@ -47,6 +50,8 @@ export default function ForgotPasswordPage() {
                 title: "Error",
                 description: "Failed to send password reset email. Please check the email address.",
             });
+        } finally {
+            setIsLoading(false);
         }
     }
 
@@ -88,9 +93,9 @@ export default function ForgotPasswordPage() {
                         onChange={(e) => setEmail(e.target.value)}
                     />
                     </div>
-                    <Button onClick={handleResetPassword} className="w-full">
+                    <LoadingButton onClick={handleResetPassword} loading={isLoading} className="w-full">
                         Send Reset Link
-                    </Button>
+                    </LoadingButton>
                      <div className="mt-4 text-center text-sm">
                         Remember your password?{" "}
                         <Link href="/login" className="underline">

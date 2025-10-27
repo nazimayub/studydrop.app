@@ -2,10 +2,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { doc, getDoc, runTransaction, onSnapshot, increment } from "firebase/firestore"
+import { doc, onSnapshot, increment } from "firebase/firestore"
 import { db, auth } from "@/lib/firebase/firebase"
-import { useAuthState } from "react-firebase-hooks/auth"
 import Link from "next/link"
+import { useVote } from "@/hooks/use-vote"
 
 
 import { Button } from "@/components/ui/button"
@@ -13,7 +13,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Badge } from "@/components/ui/badge"
 import { VoteButtons } from "@/components/app/vote-buttons"
 import { CommentsSection } from "@/components/app/comments-section"
-import { useToast } from "@/hooks/use-toast"
 import { Paperclip } from "lucide-react"
 
 interface NoteTag {
@@ -31,22 +30,23 @@ interface Note {
   tags?: NoteTag[];
   upvotes?: number;
   downvotes?: number;
-  votedBy?: string[];
   attachmentURL?: string;
   attachmentName?: string;
 }
 
-interface UserVote {
-    type: 'upvote' | 'downvote';
-    userId: string;
-}
-
 export default function NoteDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
-  const [user] = auth ? useAuthState(auth) : [null];
   const [note, setNote] = useState<Note | null>(null);
-  const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
-  const { toast } = useToast();
+
+  const { upvotes, downvotes, userVote, handleVote } = useVote({
+    contentType: 'note',
+    contentId: id,
+    authorId: note?.authorId || '',
+    initialUpvotes: note?.upvotes || 0,
+    initialDownvotes: note?.downvotes || 0,
+    points: { up: 2, down: 0 },
+    collectionPath: 'notes',
+  });
 
   useEffect(() => {
     if (!id || !db) return;
@@ -59,93 +59,6 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
     });
     return () => unsubscribe();
   }, [id]);
-
-  useEffect(() => {
-    if (!id || !user || !db) return;
-    const userVoteDocRef = doc(db, "users", user.uid, "votes", `note-${id}`);
-    const unsubscribe = onSnapshot(userVoteDocRef, (voteSnapshot) => {
-      if (voteSnapshot.exists()) {
-        setUserVote(voteSnapshot.data().type);
-      } else {
-        setUserVote(null);
-      }
-    });
-    return () => unsubscribe();
-  }, [id, user]);
-
-  
-  const handleVote = async (voteType: 'up' | 'down') => {
-    if (!user || !db) {
-        toast({ variant: "destructive", title: "Login Required" });
-        return;
-    }
-    if (!note || !note.authorId || user.uid === note.authorId) {
-        toast({ variant: "destructive", description: "You cannot vote on your own note." });
-        return;
-    }
-
-    const noteRef = doc(db, "notes", id);
-    const userVoteRef = doc(db, "users", user.uid, "votes", `note-${id}`);
-    const authorRef = doc(db, "users", note.authorId);
-
-    try {
-        await runTransaction(db, async (transaction) => {
-            const userVoteDoc = await transaction.get(userVoteRef);
-            const noteDoc = await transaction.get(noteRef);
-            const authorDoc = await transaction.get(authorRef); 
-
-            if (!noteDoc.exists()) throw "Note does not exist!";
-            if (!authorDoc.exists()) throw "Author does not exist!";
-            
-            const currentPoints = authorDoc.data()?.points || 0;
-            const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
-            
-            let pointsChange = 0;
-            let upvoteIncrement = 0;
-            let downvoteIncrement = 0;
-
-            if (currentVote === voteType) {
-                // Undoing vote
-                transaction.delete(userVoteRef);
-                if (voteType === 'up') {
-                    upvoteIncrement = -1;
-                    pointsChange = -2;
-                } else {
-                    downvoteIncrement = -1;
-                }
-            } else {
-                // New vote or changing vote
-                transaction.set(userVoteRef, { type: voteType });
-                if (currentVote === 'up') {
-                    upvoteIncrement = -1;
-                    pointsChange = -2;
-                } else if (currentVote === 'down') {
-                    downvoteIncrement = -1;
-                }
-
-                if (voteType === 'up') {
-                    upvoteIncrement += 1;
-                    pointsChange += 2;
-                } else {
-                    downvoteIncrement += 1;
-                }
-            }
-            
-            transaction.update(noteRef, { 
-                upvotes: increment(upvoteIncrement),
-                downvotes: increment(downvoteIncrement)
-            });
-
-            if (pointsChange !== 0) {
-                transaction.update(authorRef, { points: currentPoints + pointsChange });
-            }
-        });
-    } catch (error) {
-        console.error(`Error ${voteType}ing note:`, error);
-        toast({ variant: "destructive", title: "Error", description: "Your vote could not be recorded." });
-    }
-};
-
 
   if (!note) {
     return <div>Loading...</div>;
@@ -210,8 +123,8 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
         </CardContent>
          <CardFooter className="flex flex-col items-start gap-4">
              <VoteButtons
-                upvotes={note.upvotes || 0}
-                downvotes={note.downvotes || 0}
+                upvotes={upvotes}
+                downvotes={downvotes}
                 onUpvote={() => handleVote('up')}
                 onDownvote={() => handleVote('down')}
                 userVote={userVote}

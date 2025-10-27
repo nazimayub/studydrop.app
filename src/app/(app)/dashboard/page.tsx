@@ -8,12 +8,8 @@ import {
   ArrowUpRight,
   Award,
   BookOpen,
-  Menu,
   MessageSquare,
-  Package2,
-  Search,
   Users,
-  User as UserIcon,
 } from "lucide-react"
 import {
   collection,
@@ -30,12 +26,6 @@ import {
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -52,6 +42,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge";
+import { UserNav } from "@/components/app/user-nav";
+
 
 interface NoteTag {
   class: string;
@@ -73,213 +66,228 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ notes: 0, questions: 0, answers: 0, points: 0 });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [enrolledClasses, setEnrolledClasses] = useState<string[]>([]);
+  const [userName, setUserName] = useState('');
 
   useEffect(() => {
-    if (user && db) {
-        const userDocRef = doc(db, "users", user.uid);
+    if (!user || !db) return;
+    
+    const userDocRef = doc(db, "users", user.uid);
 
-        const fetchAllActivity = async () => {
-            const userDocSnap = await getDoc(userDocRef);
-            const userData = userDocSnap.data();
-            const userEnrolledClasses = userData?.enrolledClasses || [];
+    const unsubscribes: (() => void)[] = [];
+
+    // Real-time listener for user data (points, classes, name)
+    const userUnsub = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const userData = docSnap.data();
+            setStats(prev => ({ ...prev, points: userData.points || 0 }));
+            const userEnrolledClasses = userData.enrolledClasses || [];
             setEnrolledClasses(userEnrolledClasses);
+            setUserName(userData.firstName || user.displayName?.split(' ')[0] || 'User');
+            fetchFilteredActivity(userEnrolledClasses);
+        }
+    });
+    unsubscribes.push(userUnsub);
 
-            const toDate = (firebaseDate: any): Date => {
-                if (!firebaseDate) return new Date();
-                if (firebaseDate.toDate) return firebaseDate.toDate();
-                if (typeof firebaseDate === 'string') return new Date(firebaseDate);
-                if (firebaseDate.seconds) return new Date(firebaseDate.seconds * 1000);
-                return new Date();
-            };
+    const toDate = (firebaseDate: any): Date => {
+        if (!firebaseDate) return new Date();
+        if (firebaseDate.toDate) return firebaseDate.toDate();
+        if (typeof firebaseDate === 'string') return new Date(firebaseDate);
+        if (firebaseDate.seconds) return new Date(firebaseDate.seconds * 1000);
+        return new Date();
+    };
 
-            const notesCollection = collection(db, "notes");
-            const notesSnapshot = await getDocs(query(notesCollection, where("isPublic", "==", true), orderBy("date", "desc"), limit(10)));
-            const recentNotes = notesSnapshot.docs
-                .map(doc => ({
-                    id: doc.id,
-                    type: 'Note' as const,
-                    title: doc.data().title,
-                    author: doc.data().authorName,
-                    authorId: doc.data().authorId,
-                    date: toDate(doc.data().date),
-                    tags: doc.data().tags || [],
-                }))
-                .filter(note => {
-                    if (userEnrolledClasses.length === 0) return true;
-                    return note.tags?.some(tag => userEnrolledClasses.includes(tag.class));
-                });
+    const fetchFilteredActivity = async (userEnrolledClasses: string[]) => {
+        const notesCollection = collection(db, "notes");
+        const notesSnapshot = await getDocs(query(notesCollection, where("isPublic", "==", true), orderBy("date", "desc"), limit(10)));
+        const recentNotes = notesSnapshot.docs
+            .map(doc => ({
+                id: doc.id,
+                type: 'Note' as const,
+                title: doc.data().title,
+                author: doc.data().authorName,
+                authorId: doc.data().authorId,
+                date: toDate(doc.data().date),
+                tags: doc.data().tags || [],
+            }))
+            .filter(note => {
+                if (userEnrolledClasses.length === 0) return true;
+                return note.tags?.some(tag => userEnrolledClasses.includes(tag.class));
+            });
 
+        const questionsCollection = collection(db, "questions");
+        const questionsSnapshot = await getDocs(query(questionsCollection, orderBy("date", "desc"), limit(10)));
+        const recentQuestions = questionsSnapshot.docs
+            .map(doc => ({
+                id: doc.id,
+                type: 'Question' as const,
+                title: doc.data().title,
+                author: doc.data().author,
+                authorId: doc.data().authorId,
+                date: toDate(doc.data().date),
+                tags: doc.data().tags || [],
+            }))
+            .filter(question => {
+                if (userEnrolledClasses.length === 0) return true;
+                return question.tags?.some(tag => userEnrolledClasses.includes(tag.class));
+            });
 
-            const questionsCollection = collection(db, "questions");
-            const questionsSnapshot = await getDocs(query(questionsCollection, orderBy("date", "desc"), limit(10)));
-            const recentQuestions = questionsSnapshot.docs
-                .map(doc => ({
-                    id: doc.id,
-                    type: 'Question' as const,
-                    title: doc.data().title,
-                    author: doc.data().author,
-                    authorId: doc.data().authorId,
-                    date: toDate(doc.data().date),
-                    tags: doc.data().tags || [],
-                }))
-                 .filter(question => {
-                    if (userEnrolledClasses.length === 0) return true;
-                    return question.tags?.some(tag => userEnrolledClasses.includes(tag.class));
-                });
-
-
-            const combinedActivity = [...recentNotes, ...recentQuestions]
-                .sort((a, b) => b.date.getTime() - a.date.getTime())
-                .slice(0, 10);
-            
-            setRecentActivity(combinedActivity);
-        };
+        const combinedActivity = [...recentNotes, ...recentQuestions]
+            .sort((a, b) => b.date.getTime() - a.date.getTime())
+            .slice(0, 10);
         
-        fetchAllActivity();
+        setRecentActivity(combinedActivity);
+    };
 
-        const unsubscribes: (() => void)[] = [];
+    // Real-time listeners for stats
+    const notesQuery = query(collection(db, "notes"), where("authorId", "==", user.uid));
+    unsubscribes.push(onSnapshot(notesQuery, (snapshot) => {
+        setStats(prev => ({ ...prev, notes: snapshot.size }));
+    }));
 
-        const notesQuery = query(collection(db, "notes"), where("authorId", "==", user.uid));
-        unsubscribes.push(onSnapshot(notesQuery, (snapshot) => {
-            setStats(prev => ({ ...prev, notes: snapshot.size }));
-        }));
+    const questionsQuery = query(collection(db, "questions"), where("authorId", "==", user.uid));
+    unsubscribes.push(onSnapshot(questionsQuery, (snapshot) => {
+        setStats(prev => ({ ...prev, questions: snapshot.size }));
+    }));
+    
+    const answersQuery = query(collectionGroup(db, 'answers'), where("authorId", "==", user.uid));
+    unsubscribes.push(onSnapshot(answersQuery, (snapshot) => {
+        setStats(prev => ({ ...prev, answers: snapshot.size }));
+    }));
 
-        const questionsQuery = query(collection(db, "questions"), where("authorId", "==", user.uid));
-        unsubscribes.push(onSnapshot(questionsQuery, (snapshot) => {
-             setStats(prev => ({ ...prev, questions: snapshot.size }));
-        }));
-        
-        const answersQuery = query(collectionGroup(db, 'answers'), where("authorId", "==", user.uid));
-        unsubscribes.push(onSnapshot(answersQuery, (snapshot) => {
-            setStats(prev => ({ ...prev, answers: snapshot.size }));
-        }));
-        
-        unsubscribes.push(onSnapshot(userDocRef, (doc) => {
-            if (doc.exists()) {
-                const userData = doc.data();
-                setStats(prev => ({ ...prev, points: userData.points || 0 }));
-                setEnrolledClasses(userData.enrolledClasses || []);
-            }
-        }));
-
-        return () => unsubscribes.forEach(unsub => unsub());
-    }
+    return () => unsubscribes.forEach(unsub => unsub());
+    
   }, [user]);
 
   return (
-    <div className="flex flex-1 flex-col gap-4 md:gap-8">
-      <div className="mb-4">
-          <h1 className="text-3xl font-bold font-headline">Glad to see you, {user?.displayName?.split(' ')[0] || 'User'}!</h1>
-          <p className="text-muted-foreground">Here's what's happening in your community.</p>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
+        <div className="flex items-center">
+            <h1 className="text-lg font-semibold md:text-2xl">Welcome back, {userName}!</h1>
+            <div className="ml-auto flex items-center gap-2">
+                <Link href="/notes/new">
+                  <Button size="sm" className="h-8 gap-1">
+                      <BookOpen className="h-3.5 w-3.5" />
+                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                      Add Note
+                      </span>
+                  </Button>
+                </Link>
+                <Link href="/forum/new">
+                   <Button size="sm" variant="outline" className="h-8 gap-1">
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                      Ask Question
+                      </span>
+                  </Button>
+                </Link>
+            </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                Your Notes
+                </CardTitle>
+                <BookOpen className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">{stats.notes}</div>
+                <p className="text-xs text-muted-foreground">
+                Total notes you've created
+                </p>
+            </CardContent>
+            </Card>
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                Your Questions
+                </CardTitle>
+                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">{stats.questions}</div>
+                <p className="text-xs text-muted-foreground">
+                Total questions you've asked
+                </p>
+            </CardContent>
+            </Card>
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Your Answers</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">{stats.answers}</div>
+                <p className="text-xs text-muted-foreground">
+                Total answers you've provided
+                </p>
+            </CardContent>
+            </Card>
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Points Earned</CardTitle>
+                <Award className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">{stats.points.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">
+                Keep contributing to earn more!
+                </p>
+            </CardContent>
+            </Card>
+        </div>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Your Notes
-            </CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.notes}</div>
-            <p className="text-xs text-muted-foreground">
-              Total notes you've created
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Your Questions
-            </CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.questions}</div>
-            <p className="text-xs text-muted-foreground">
-              Total questions you've asked
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Your Answers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.answers}</div>
-            <p className="text-xs text-muted-foreground">
-              Total answers you've provided
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Points Earned</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.points.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              Keep contributing to earn more!
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid grid-cols-1 gap-4 md:gap-8 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center">
+        <CardHeader className="flex flex-row items-center">
             <div className="grid gap-2">
-              <CardTitle>Catch Up Feed</CardTitle>
-              <CardDescription>
+            <CardTitle>Catch Up Feed</CardTitle>
+            <CardDescription>
                 {enrolledClasses.length > 0
-                  ? "Recent notes and questions from your classes."
-                  : "Recent notes and questions from all classes. Add classes in your account to filter this feed."
+                ? "Recent notes and questions from your classes."
+                : "Recent notes and questions from all classes. Add classes in your account to filter this feed."
                 }
-              </CardDescription>
+            </CardDescription>
             </div>
             <Button asChild size="sm" className="ml-auto gap-1">
-              <Link href="/activity">
+            <Link href="/activity">
                 View All
                 <ArrowUpRight className="h-4 w-4" />
-              </Link>
+            </Link>
             </Button>
-          </CardHeader>
-          <CardContent>
+        </CardHeader>
+        <CardContent>
             <div className="overflow-x-auto">
-              <Table>
+            <Table>
                 <TableHeader>
-                  <TableRow>
+                <TableRow>
                     <TableHead>User</TableHead>
                     <TableHead>Activity</TableHead>
                     <TableHead className="hidden sm:table-cell">Tags</TableHead>
                     <TableHead className="hidden sm:table-cell">Type</TableHead>
                     <TableHead className="text-right">Date</TableHead>
-                  </TableRow>
+                </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentActivity.map(activity => (
+                {recentActivity.map(activity => (
                     <TableRow key={activity.id}>
                         <TableCell>
                             {activity.authorId ? (
-                                  <Link href={`/users/${activity.authorId}`} className="font-medium hover:underline">{activity.author}</Link>
+                                <Link href={`/users/${activity.authorId}`} className="font-medium hover:underline">{activity.author}</Link>
                             ) : (
                                 <div className="font-medium">{activity.author}</div>
                             )}
                         </TableCell>
                         <TableCell>
-                              <Link href={activity.type === 'Note' ? `/notes/${activity.id}` : `/forum/${activity.id}`} className="font-medium hover:underline">
+                            <Link href={activity.type === 'Note' ? `/notes/${activity.id}` : `/forum/${activity.id}`} className="font-medium hover:underline">
                                 {activity.title}
                             </Link>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1">
                             {activity.tags?.map((tag, index) => (
-                              <Badge key={index} variant="secondary">
+                            <Badge key={index} variant="secondary">
                                 {`${tag.class}: ${tag.topic}`}
-                              </Badge>
+                            </Badge>
                             ))}
-                          </div>
+                        </div>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
                         <Badge className="text-xs" variant="outline">
@@ -288,29 +296,12 @@ export default function Dashboard() {
                         </TableCell>
                         <TableCell className="text-right">{activity.date ? activity.date.toLocaleDateString() : ''}</TableCell>
                     </TableRow>
-                  ))}
+                ))}
                 </TableBody>
-              </Table>
+            </Table>
             </div>
-          </CardContent>
+        </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-              <Link href="/notes/new">
-              <Button className="w-full">Create New Note</Button>
-              </Link>
-              <Link href="/forum/new">
-              <Button variant="outline" className="w-full">Ask a Question</Button>
-              </Link>
-              <Link href="/account">
-              <Button variant="outline" className="w-full"><UserIcon className="mr-2 h-4 w-4" /> My Account</Button>
-              </Link>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+    </main>
   )
 }

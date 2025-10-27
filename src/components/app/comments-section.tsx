@@ -1,12 +1,14 @@
+
 "use client"
 
 import { useState, useEffect } from "react";
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment, runTransaction, deleteDoc, collectionGroup, writeBatch } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, increment, runTransaction, deleteDoc, writeBatch } from "firebase/firestore";
 import { db, auth, storage } from "@/lib/firebase/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuthState } from "react-firebase-hooks/auth";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import { useVote } from "@/hooks/use-vote";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -17,6 +19,9 @@ import { VoteButtons } from "./vote-buttons";
 import { MoreHorizontal, Paperclip, File as FileIcon, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
+const ALLOWED_FILE_TYPES = ['image/png', 'image/jpeg', 'application/pdf'];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 interface Comment {
     id: string;
@@ -32,8 +37,76 @@ interface Comment {
     attachmentName?: string;
 }
 
-interface UserVoteState {
-    [commentId: string]: 'up' | 'down' | null;
+interface CommentProps {
+    comment: Comment;
+    collectionPath: string;
+    onDelete: (commentId: string) => void;
+}
+
+function CommentComponent({ comment, collectionPath, onDelete }: CommentProps) {
+    const [user] = useAuthState(auth);
+    const { upvotes, downvotes, userVote, handleVote } = useVote({
+        contentType: 'comment',
+        contentId: comment.id,
+        authorId: comment.authorId,
+        initialUpvotes: comment.upvotes,
+        initialDownvotes: comment.downvotes,
+        points: { up: 1, down: 0 },
+        collectionPath: collectionPath,
+    });
+
+    return (
+        <Card>
+            <CardHeader className="flex flex-row items-start gap-4 pb-4">
+                 <Link href={`/users/${comment.authorId}`}>
+                    <Avatar>
+                        <AvatarImage src={comment.authorAvatar} />
+                        <AvatarFallback>{comment.authorFallback}</AvatarFallback>
+                    </Avatar>
+                </Link>
+                <div className="flex-1">
+                     <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm">
+                            <Link href={`/users/${comment.authorId}`} className="font-semibold hover:underline">{comment.authorName}</Link>
+                            <span className="text-muted-foreground">&middot; {comment.date && new Date(comment.date.seconds * 1000).toLocaleDateString()}</span>
+                        </div>
+                         {user?.uid === comment.authorId && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuItem onClick={() => onDelete(comment.id)} className="text-destructive">Delete</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </div>
+                    <p className="mt-2 text-sm">{comment.content}</p>
+                    {comment.attachmentURL && (
+                        <div className="mt-2">
+                            <a href={comment.attachmentURL} target="_blank" rel="noopener noreferrer">
+                                <Button variant="outline" size="sm">
+                                    <Paperclip className="mr-2 h-4 w-4" />
+                                    {comment.attachmentName || 'View Attachment'}
+                                </Button>
+                            </a>
+                        </div>
+                    )}
+                </div>
+            </CardHeader>
+            <CardFooter className="flex justify-end pt-0">
+               <VoteButtons
+                    upvotes={upvotes}
+                    downvotes={downvotes}
+                    onUpvote={() => handleVote('up')}
+                    onDownvote={() => handleVote('down')}
+                    userVote={userVote}
+               />
+            </CardFooter>
+        </Card>
+    )
 }
 
 interface CommentsSectionProps {
@@ -46,7 +119,6 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
     const [user] = auth ? useAuthState(auth) : [null];
     const { toast } = useToast();
     const [comments, setComments] = useState<Comment[]>([]);
-    const [userVotes, setUserVotes] = useState<UserVoteState>({});
     const [newComment, setNewComment] = useState("");
     const [attachment, setAttachment] = useState<File | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -54,38 +126,17 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
     const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
 
     const collectionName = contentType === 'note' ? 'notes' : 'questions';
-    const commentsCollectionRef = db ? collection(db, collectionName, contentId, "comments") : null;
+    const commentsCollectionPath = `${collectionName}/${contentId}/comments`;
+    const commentsCollectionRef = db ? collection(db, commentsCollectionPath) : null;
     
-     const fetchCommentsAndVotes = () => {
+    useEffect(() => {
         if (!commentsCollectionRef) return;
         const q = query(commentsCollectionRef, orderBy("date", "desc"));
         const unsubscribe = onSnapshot(q, async (snapshot) => {
             const commentsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comment));
             setComments(commentsList);
-            
-            if (user && db) {
-                const newVotes: UserVoteState = {};
-                for (const comment of commentsList) {
-                    const voteDocRef = doc(db, "users", user.uid, "votes", `comment-${comment.id}`);
-                    const voteDoc = await getDoc(voteDocRef);
-                    if (voteDoc.exists()) {
-                        newVotes[comment.id] = voteDoc.data().type;
-                    } else {
-                        newVotes[comment.id] = null;
-                    }
-                }
-                setUserVotes(newVotes);
-            }
         });
-        return unsubscribe;
-    };
-
-
-    useEffect(() => {
-        if (contentId && user) {
-            const unsubscribe = fetchCommentsAndVotes();
-            return () => unsubscribe && unsubscribe();
-        }
+        return () => unsubscribe();
     }, [contentId, user]);
     
     const handleDeleteClick = (commentId: string) => {
@@ -94,8 +145,17 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setAttachment(e.target.files[0]);
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > MAX_FILE_SIZE) {
+                toast({ variant: "destructive", title: "File too large", description: `Please select a file smaller than ${MAX_FILE_SIZE / 1024 / 1024}MB.` });
+                return;
+            }
+            if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+                toast({ variant: "destructive", title: "Invalid file type", description: "Please select a PNG, JPG, or PDF file." });
+                return;
+            }
+            setAttachment(file);
         }
     };
 
@@ -114,68 +174,59 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
     };
 
     const handlePostComment = async () => {
-        if (!newComment.trim() || !user || !db || !storage) return;
+        if (!newComment.trim() || !user || !db || !storage || !commentsCollectionRef) return;
         setIsLoading(true);
-        
-        const batch = writeBatch(db);
+        const newCommentRef = doc(commentsCollectionRef);
         
         try {
-            const userDocRef = doc(db, "users", user.uid);
-            const userDocSnap = await getDoc(userDocRef);
-            const authorName = user.displayName || `${userDocSnap.data()?.firstName} ${userDocSnap.data()?.lastName}`;
-            const authorAvatar = user.photoURL || userDocSnap.data()?.photoURL || "";
-            const authorFallback = (user.displayName?.charAt(0) || userDocSnap.data()?.firstName?.charAt(0) || '') + (user.displayName?.split(' ')[1]?.charAt(0) || userDocSnap.data()?.lastName?.charAt(0) || '');
-
-            let attachmentURL = "";
-            let attachmentName = "";
-            if (attachment) {
-                const storageRef = ref(storage, `attachments/comments/${user.uid}/${Date.now()}_${attachment.name}`);
+            const uploadPromise = attachment ? (async () => {
+                const storageRef = ref(storage, `attachments/comments/${user.uid}/${newCommentRef.id}_${attachment.name}`);
                 await uploadBytes(storageRef, attachment);
-                attachmentURL = await getDownloadURL(storageRef);
-                attachmentName = attachment.name;
-            }
-
-            const newCommentRef = doc(collection(db, collectionName, contentId, "comments"));
-            batch.set(newCommentRef, {
-                authorId: user.uid,
-                authorName,
-                authorAvatar,
-                authorFallback,
-                content: newComment,
-                date: serverTimestamp(),
-                upvotes: 0,
-                downvotes: 0,
-                attachmentURL,
-                attachmentName,
-            });
+                return getDownloadURL(storageRef);
+            })() : Promise.resolve(null);
             
-            if (userDocSnap.exists()) {
-                const newPoints = (userDocSnap.data().points || 0) + 2;
-                batch.update(userDocRef, { points: newPoints });
-            }
+            const transactionPromise = runTransaction(db, async (transaction) => {
+                const userDocRef = doc(db, "users", user.uid);
+                const userDocSnap = await transaction.get(userDocRef);
+                if (!userDocSnap.exists()) throw "User does not exist";
 
-            if (contentAuthorId && contentAuthorId !== user.uid) {
-                const contentAuthorDoc = await getDoc(doc(db, 'users', contentAuthorId));
-                if (contentAuthorDoc.exists() && contentAuthorDoc.data().notificationPreferences?.commentsOnNotes) {
+                const userData = userDocSnap.data();
+                const authorName = user.displayName || `${userData.firstName} ${userData.lastName}`;
+                const authorAvatar = user.photoURL || userData.photoURL || "";
+                const authorFallback = (user.displayName?.charAt(0) || userData.firstName?.charAt(0) || '') + (user.displayName?.split(' ')[1]?.charAt(0) || userData.lastName?.charAt(0) || '');
+
+                transaction.update(userDocRef, { points: increment(2) });
+
+                transaction.set(newCommentRef, {
+                    authorId: user.uid, authorName, authorAvatar, authorFallback,
+                    content: newComment,
+                    date: serverTimestamp(),
+                    upvotes: 0, downvotes: 0,
+                    attachmentURL: "", attachmentName: attachment?.name || "",
+                });
+
+                 if (contentAuthorId && contentAuthorId !== user.uid && userData.notificationPreferences?.commentsOnNotes) {
                      const notificationRef = doc(collection(db, 'users', contentAuthorId, 'notifications'));
-                     let link = contentType === 'note' ? `/notes/${contentId}` : `/forum/${contentId}`;
+                     const link = contentType === 'note' ? `/notes/${contentId}` : `/forum/${contentId}`;
                      const contentDoc = await getDoc(doc(db, collectionName, contentId));
                      const title = contentDoc.exists() ? contentDoc.data().title : 'your post';
 
-                     batch.set(notificationRef, {
+                     transaction.set(notificationRef, {
                         type: 'new_comment',
                         message: `${authorName} commented on ${title}`,
-                        link: link,
-                        isRead: false,
-                        date: serverTimestamp(),
+                        link, isRead: false, date: serverTimestamp(),
                     });
                 }
+            });
+            
+            const [attachmentURL] = await Promise.all([uploadPromise, transactionPromise]);
+
+            if (attachmentURL) {
+                await updateDoc(newCommentRef, { attachmentURL });
             }
 
-            await batch.commit();
             setNewComment("");
             setAttachment(null);
-
         } catch (error) {
             console.error("Error adding comment: ", error);
             toast({ variant: "destructive", title: "Error", description: "Could not post your comment." });
@@ -184,76 +235,6 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
         }
     };
     
-    const handleVote = async (commentId: string, voteType: 'up' | 'down', authorId: string) => {
-        if (!user || !db || !commentsCollectionRef) {
-            toast({ variant: "destructive", title: "Login Required" });
-            return;
-        }
-        if (user.uid === authorId) {
-            toast({ variant: "destructive", description: "You cannot vote on your own comment." });
-            return;
-        }
-
-        const commentRef = doc(commentsCollectionRef, commentId);
-        const userVoteRef = doc(db, "users", user.uid, "votes", `comment-${commentId}`);
-        const authorRef = doc(db, "users", authorId);
-
-        try {
-            await runTransaction(db, async (transaction) => {
-                const userVoteDoc = await transaction.get(userVoteRef);
-                const commentDoc = await transaction.get(commentRef);
-                const authorDoc = await transaction.get(authorRef);
-
-                if (!commentDoc.exists()) throw "Comment does not exist!";
-                if (!authorDoc.exists()) throw "Author does not exist!";
-
-                const currentPoints = authorDoc.data()?.points || 0;
-                const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
-                
-                let pointsChange = 0;
-                let upvoteIncrement = 0;
-                let downvoteIncrement = 0;
-
-                if (currentVote === voteType) {
-                    transaction.delete(userVoteRef);
-                    if (voteType === 'up') {
-                        upvoteIncrement = -1;
-                        pointsChange = -1;
-                    } else {
-                        downvoteIncrement = -1;
-                    }
-                } else {
-                    transaction.set(userVoteRef, { type: voteType });
-                    if (currentVote === 'up') {
-                        upvoteIncrement = -1;
-                        pointsChange = -1;
-                    } else if (currentVote === 'down') {
-                        downvoteIncrement = -1;
-                    }
-
-                    if (voteType === 'up') {
-                        upvoteIncrement += 1;
-                        pointsChange += 1;
-                    } else {
-                        downvoteIncrement += 1;
-                    }
-                }
-                
-                transaction.update(commentRef, { 
-                    upvotes: increment(upvoteIncrement),
-                    downvotes: increment(downvoteIncrement)
-                });
-
-                if (pointsChange !== 0 && authorId) {
-                    transaction.update(authorRef, { points: currentPoints + pointsChange });
-                }
-            });
-        } catch (error) {
-            console.error(`Error ${voteType}ing comment:`, error);
-            toast({ variant: "destructive", title: "Error", description: "Your vote could not be recorded." });
-        }
-    };
-
     return (
         <div className="grid gap-6">
             <h2 className="text-2xl font-bold font-headline">{comments.length} Comments</h2>
@@ -270,7 +251,7 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
                         disabled={!user || isLoading}
                     />
                     <div>
-                        <Input id="attachment-comment" type="file" onChange={handleFileChange} />
+                        <Input id="attachment-comment" type="file" onChange={handleFileChange} accept={ALLOWED_FILE_TYPES.join(',')} />
                          {attachment && (
                             <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md">
                                 <FileIcon className="h-4 w-4" />
@@ -291,56 +272,12 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
 
             <div className="grid gap-4">
                 {comments.map(comment => (
-                    <Card key={comment.id}>
-                        <CardHeader className="flex flex-row items-start gap-4 pb-4">
-                             <Link href={`/users/${comment.authorId}`}>
-                                <Avatar>
-                                    <AvatarImage src={comment.authorAvatar} />
-                                    <AvatarFallback>{comment.authorFallback}</AvatarFallback>
-                                </Avatar>
-                            </Link>
-                            <div className="flex-1">
-                                 <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <Link href={`/users/${comment.authorId}`} className="font-semibold hover:underline">{comment.authorName}</Link>
-                                        <span className="text-muted-foreground">&middot; {comment.date && new Date(comment.date.seconds * 1000).toLocaleDateString()}</span>
-                                    </div>
-                                     {user?.uid === comment.authorId && (
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent>
-                                                <DropdownMenuItem onSelect={() => handleDeleteClick(comment.id)} className="text-destructive">Delete</DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    )}
-                                </div>
-                                <p className="mt-2 text-sm">{comment.content}</p>
-                                {comment.attachmentURL && (
-                                    <div className="mt-2">
-                                        <a href={comment.attachmentURL} target="_blank" rel="noopener noreferrer">
-                                            <Button variant="outline" size="sm">
-                                                <Paperclip className="mr-2 h-4 w-4" />
-                                                {comment.attachmentName || 'View Attachment'}
-                                            </Button>
-                                        </a>
-                                    </div>
-                                )}
-                            </div>
-                        </CardHeader>
-                        <CardFooter className="flex justify-end pt-0">
-                           <VoteButtons
-                                upvotes={comment.upvotes}
-                                downvotes={comment.downvotes}
-                                onUpvote={() => handleVote(comment.id, 'up', comment.authorId)}
-                                onDownvote={() => handleVote(comment.id, 'down', comment.authorId)}
-                                userVote={userVotes[comment.id]}
-                           />
-                        </CardFooter>
-                    </Card>
+                    <CommentComponent
+                        key={comment.id}
+                        comment={comment}
+                        collectionPath={commentsCollectionPath}
+                        onDelete={handleDeleteClick}
+                    />
                 ))}
             </div>
              <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

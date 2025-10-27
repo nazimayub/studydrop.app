@@ -1,12 +1,13 @@
 
 "use client"
 import { useEffect, useState } from 'react';
-import { doc, getDoc, collection, query, where, getDocs, collectionGroup, orderBy, limit } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, collectionGroup, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BookOpen, MessageSquare, Users, Award } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 interface UserProfile {
     firstName: string;
@@ -15,6 +16,7 @@ interface UserProfile {
     bio: string;
     photoURL: string;
     points: number;
+    activeTheme?: string;
 }
 
 interface UserStats {
@@ -39,60 +41,62 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchUserData = async () => {
-            if (!db) return;
-            setLoading(true);
+        if (!id || !db) return;
+        setLoading(true);
+
+        const userDocRef = doc(db, 'users', id);
+        const unsubscribeUser = onSnapshot(userDocRef, (userDocSnap) => {
+            if (userDocSnap.exists()) {
+                setUserProfile(userDocSnap.data() as UserProfile);
+            } else {
+                setUserProfile(null);
+            }
+            setLoading(false);
+        });
+        
+        const fetchStatsAndActivity = async () => {
             try {
-                const userDocRef = doc(db, 'users', id);
-                const userDocSnap = await getDoc(userDocRef);
+                // Fetch stats
+                const notesQuery = query(collection(db, "notes"), where("authorId", "==", id), where("isPublic", "==", true));
+                const notesSnapshot = await getDocs(notesQuery);
+                
+                const questionsQuery = query(collection(db, "questions"), where("authorId", "==", id));
+                const questionsSnapshot = await getDocs(questionsQuery);
+                
+                const answersQuery = query(collectionGroup(db, 'answers'), where("authorId", "==", id));
+                const answersSnapshot = await getDocs(answersQuery);
 
-                if (userDocSnap.exists()) {
-                    setUserProfile(userDocSnap.data() as UserProfile);
+                setUserStats({
+                    notes: notesSnapshot.size,
+                    questions: questionsSnapshot.size,
+                    answers: answersSnapshot.size,
+                });
 
-                    // Fetch stats
-                    const notesQuery = query(collection(db, "notes"), where("authorId", "==", id), where("isPublic", "==", true));
-                    const notesSnapshot = await getDocs(notesQuery);
-                    
-                    const questionsQuery = query(collection(db, "questions"), where("authorId", "==", id));
-                    const questionsSnapshot = await getDocs(questionsQuery);
-                    
-                    const answersQuery = query(collectionGroup(db, 'answers'), where("authorId", "==", id));
-                    const answersSnapshot = await getDocs(answersQuery);
+                // Fetch recent activity
+                const userNotesQuery = query(collection(db, "notes"), where("authorId", "==", id), where("isPublic", "==", true), orderBy("date", "desc"), limit(5));
+                const userQuestionsQuery = query(collection(db, "questions"), where("authorId", "==", id), orderBy("date", "desc"), limit(5));
+                
+                const userNotesSnapshot = await getDocs(userNotesQuery);
+                const userQuestionsSnapshot = await getDocs(userQuestionsQuery);
 
-                    setUserStats({
-                        notes: notesSnapshot.size,
-                        questions: questionsSnapshot.size,
-                        answers: answersSnapshot.size,
-                    });
+                const userNotes = userNotesSnapshot.docs.map(d => ({...d.data(), id: d.id, type: 'Note', url: `/notes/${d.id}` } as Activity));
+                const userQuestions = userQuestionsSnapshot.docs.map(d => ({...d.data(), id: d.id, type: 'Question', url: `/forum/${d.id}` } as Activity));
+                
+                const combinedActivity = [...userNotes, ...userQuestions]
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .slice(0, 5);
 
-                    // Fetch recent activity
-                    const userNotesQuery = query(collection(db, "notes"), where("authorId", "==", id), where("isPublic", "==", true), orderBy("date", "desc"), limit(5));
-                    const userQuestionsQuery = query(collection(db, "questions"), where("authorId", "==", id), orderBy("date", "desc"), limit(5));
-                    
-                    const userNotesSnapshot = await getDocs(userNotesQuery);
-                    const userQuestionsSnapshot = await getDocs(userQuestionsQuery);
+                setRecentActivity(combinedActivity);
 
-                    const userNotes = userNotesSnapshot.docs.map(d => ({...d.data(), id: d.id, type: 'Note', url: `/notes/${d.id}` } as Activity));
-                    const userQuestions = userQuestionsSnapshot.docs.map(d => ({...d.data(), id: d.id, type: 'Question', url: `/forum/${d.id}` } as Activity));
-                    
-                    const combinedActivity = [...userNotes, ...userQuestions]
-                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                        .slice(0, 5);
-
-                    setRecentActivity(combinedActivity);
-
-                } else {
-                    setUserProfile(null);
-                }
             } catch (error) {
                 console.error("Error fetching user data:", error);
-            } finally {
-                setLoading(false);
             }
         };
 
-        if (id) {
-            fetchUserData();
+        fetchStatsAndActivity();
+
+        return () => {
+            unsubscribeUser();
         }
     }, [id]);
 
@@ -112,7 +116,7 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
     }
 
     return (
-        <div className="grid gap-8">
+        <div className={cn("grid gap-8 profile-theme", userProfile.activeTheme)}>
             <Card>
                 <CardHeader className="flex flex-col md:flex-row items-center gap-6">
                     <Avatar className="h-24 w-24">
@@ -194,5 +198,3 @@ export default function UserProfilePage({ params }: { params: { id: string } }) 
         </div>
     );
 }
-
-    

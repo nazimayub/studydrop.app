@@ -1,3 +1,4 @@
+
 "use client"
 import { useEffect, useState } from "react";
 import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, increment, writeBatch, runTransaction, query, onSnapshot, orderBy } from "firebase/firestore";
@@ -6,6 +7,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuthState } from "react-firebase-hooks/auth";
 import Link from 'next/link';
 import { useToast } from "@/hooks/use-toast";
+import { useVote } from "@/hooks/use-vote";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -18,6 +20,8 @@ import { VoteButtons } from "@/components/app/vote-buttons";
 import { CommentsSection } from "@/components/app/comments-section";
 import { Input } from "@/components/ui/input";
 
+const ALLOWED_FILE_TYPES = ['image/png', 'image/jpeg', 'application/pdf'];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 interface PostTag {
     class: string;
@@ -54,366 +58,45 @@ interface Answer {
     attachmentName?: string;
 }
 
-interface UserVoteState {
-    [answerId: string]: 'up' | 'down' | null;
-}
-
-export default function ForumPostPage({ params }: { params: { id: string } }) {
-    const { id } = params;
-    const [post, setPost] = useState<Post | null>(null);
-    const [answers, setAnswers] = useState<Answer[]>([]);
-    const [newAnswer, setNewAnswer] = useState("");
-    const [attachment, setAttachment] = useState<File | null>(null);
-    const [user] = auth ? useAuthState(auth) : [null];
+function AnswerComponent({ answer, postId, postAuthorId }: { answer: Answer, postId: string, postAuthorId: string }) {
+    const [user] = useAuthState(auth);
     const { toast } = useToast();
-    const [userVotes, setUserVotes] = useState<UserVoteState>({});
-    const [postUserVote, setPostUserVote] = useState<'up' | 'down' | null>(null);
+    const { upvotes, downvotes, userVote, handleVote } = useVote({
+        contentType: 'answer',
+        contentId: answer.id,
+        authorId: answer.authorId,
+        initialUpvotes: answer.upvotes,
+        initialDownvotes: answer.downvotes,
+        points: { up: 5, down: 0 },
+        collectionPath: `questions/${postId}/answers`,
+    });
 
-
-    const fetchPostAndAnswers = () => {
-        if (!id || !db) return;
-        
-        const postUnsubscribe = onSnapshot(doc(db, "questions", id), async (postSnapshot) => {
-            if (postSnapshot.exists()) {
-                const postData = postSnapshot.data() as Post;
-                setPost({ id: postSnapshot.id, ...postData });
-
-                 if (user) {
-                    const userVoteDocRef = doc(db, "users", user.uid, "votes", `question-${id}`);
-                    const userVoteDoc = await getDoc(userVoteDocRef);
-                    if (userVoteDoc.exists()) {
-                        setPostUserVote(userVoteDoc.data().type);
-                    } else {
-                        setPostUserVote(null);
-                    }
-                }
-            }
-        });
-
-        const answersCollection = collection(db, "questions", id, "answers");
-        const answersQuery = query(answersCollection, orderBy("date", "desc"));
-        const answersUnsubscribe = onSnapshot(answersQuery, async (answersSnapshot) => {
-            const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer)).sort((a, b) => {
-                if (a.isAccepted && !b.isAccepted) return -1;
-                if (!a.isAccepted && b.isAccepted) return 1;
-                const scoreA = (a.upvotes || 0) - (a.downvotes || 0);
-                const scoreB = (b.upvotes || 0) - (b.downvotes || 0);
-                if (scoreA !== scoreB) return scoreB - scoreA;
-                if (b.date && a.date) {
-                   return b.date.seconds - a.date.seconds;
-                }
-                return 0;
-            });
-            setAnswers(answersList);
-
-            if (user) {
-                const newVotes: UserVoteState = {};
-                for (const answer of answersList) {
-                    const voteDocRef = doc(db, "users", user.uid, "votes", `answer-${answer.id}`);
-                    const voteDoc = await getDoc(voteDocRef);
-                    if (voteDoc.exists()) {
-                        newVotes[answer.id] = voteDoc.data().type;
-                    } else {
-                        newVotes[answer.id] = null;
-                    }
-                }
-                setUserVotes(newVotes);
-            }
-        });
-
-        return () => {
-            postUnsubscribe();
-            answersUnsubscribe();
-        };
-    };
-
-    useEffect(() => {
-        const incrementViewCount = async () => {
-            if (!db) return;
-             const postRef = doc(db, "questions", id);
-             await updateDoc(postRef, {
-                views: increment(1)
-            }).catch(err => console.error("Failed to increment view count:", err));
-        }
-        if (id) {
-            incrementViewCount();
-            const unsubscribe = fetchPostAndAnswers();
-            return unsubscribe;
-        }
-    }, [id, user]);
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            setAttachment(e.target.files[0]);
-        }
-    };
-
-    const handlePostAnswer = async () => {
-        if (!newAnswer.trim() || !user || !post || !db || !storage) return;
-
-        try {
-            const batch = writeBatch(db);
-
-            let attachmentURL = "";
-            let attachmentName = "";
-            if (attachment) {
-                const storageRef = ref(storage, `attachments/answers/${user.uid}/${Date.now()}_${attachment.name}`);
-                await uploadBytes(storageRef, attachment);
-                attachmentURL = await getDownloadURL(storageRef);
-                attachmentName = attachment.name;
-            }
-            
-            const userDocRef = doc(db, "users", user.uid);
-            const userDoc = await getDoc(userDocRef);
-            let authorName = "Anonymous";
-            let authorFallback = "A";
-            let authorAvatar = "";
-
-            if (userDoc.exists()) {
-                const userData = userDoc.data();
-                authorName = `${userData.firstName} ${userData.lastName}`;
-                authorFallback = `${userData.firstName?.charAt(0) || ''}${userData.lastName?.charAt(0) || ''}`;
-                authorAvatar = userData.photoURL || "";
-                
-                const newPoints = (userData.points || 0) + 15;
-                batch.update(userDocRef, { points: newPoints });
-            }
-
-            const answerRef = doc(collection(db, "questions", id, "answers"));
-            batch.set(answerRef, {
-                author: authorName,
-                avatar: authorAvatar,
-                fallback: authorFallback,
-                content: newAnswer,
-                date: serverTimestamp(),
-                upvotes: 0,
-                downvotes: 0,
-                authorId: user.uid,
-                isAccepted: false,
-                attachmentURL,
-                attachmentName
-            });
-
-            const questionRef = doc(db, "questions", id);
-            batch.update(questionRef, { replies: increment(1) });
-
-            if (post.authorId && post.authorId !== user.uid) {
-                const questionAuthorDoc = await getDoc(doc(db, 'users', post.authorId));
-                if (questionAuthorDoc.exists() && questionAuthorDoc.data().notificationPreferences?.answersOnQuestions) {
-                    const notificationRef = doc(collection(db, 'users', post.authorId, 'notifications'));
-                    batch.set(notificationRef, {
-                        type: 'new_answer',
-                        message: `${authorName} answered your question: "${post.title}"`,
-                        link: `/forum/${id}`,
-                        isRead: false,
-                        date: serverTimestamp(),
-                    });
-                }
-            }
-
-            await batch.commit();
-
-            setNewAnswer("");
-            setAttachment(null);
-        } catch (error) {
-            console.error("Error adding document: ", error);
-        }
-    };
-    
-   const handlePostVote = async (voteType: 'up' | 'down') => {
-        if (!user || !db) {
-            toast({ variant: "destructive", title: "Login Required" });
-            return;
-        }
-        if (!post || !post.authorId || user.uid === post.authorId) {
-            toast({ variant: "destructive", description: "You cannot vote on your own question." });
-            return;
-        }
-
-        const postRef = doc(db, "questions", id);
-        const userVoteRef = doc(db, "users", user.uid, "votes", `question-${id}`);
-        const authorRef = doc(db, "users", post.authorId);
-
-        try {
-            await runTransaction(db, async (transaction) => {
-                const userVoteDoc = await transaction.get(userVoteRef);
-                const postDoc = await transaction.get(postRef);
-                const authorDoc = await transaction.get(authorRef);
-                
-                if (!postDoc.exists()) throw "Post does not exist!";
-                if (!authorDoc.exists()) throw "Author does not exist!";
-
-                const currentPoints = authorDoc.data()?.points || 0;
-                const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
-                
-                let pointsChange = 0;
-                let upvoteIncrement = 0;
-                let downvoteIncrement = 0;
-                
-                if (currentVote === voteType) { // Undoing vote
-                    transaction.delete(userVoteRef);
-                    if (voteType === 'up') {
-                        upvoteIncrement = -1;
-                        pointsChange = -2;
-                    } else {
-                        downvoteIncrement = -1;
-                    }
-                } else { // New vote or changing vote
-                    transaction.set(userVoteRef, { type: voteType });
-                    if (currentVote === 'up') { // Changing from up to down
-                        upvoteIncrement = -1;
-                        pointsChange = -2;
-                    } else if (currentVote === 'down') { // Changing from down to up
-                        downvoteIncrement = -1;
-                    }
-
-                    if (voteType === 'up') {
-                        upvoteIncrement += 1;
-                        pointsChange += 2;
-                    } else {
-                        downvoteIncrement += 1;
-                    }
-                }
-
-                transaction.update(postRef, {
-                    upvotes: increment(upvoteIncrement),
-                    downvotes: increment(downvoteIncrement),
-                });
-
-                if (pointsChange !== 0) {
-                    transaction.update(authorRef, { points: currentPoints + pointsChange });
-                }
-            });
-        } catch (error) {
-            console.error(`Error ${voteType}ing post:`, error);
-            toast({ variant: "destructive", title: "Error", description: "Your vote could not be recorded." });
-        }
-    };
-
-    const handleAnswerVote = async (answer: Answer, voteType: 'up' | 'down') => {
-        if (!user || !db) {
-            toast({ variant: "destructive", title: "Login Required" });
-            return;
-        }
-        if (user.uid === answer.authorId) {
-            toast({ variant: "destructive", description: "You cannot vote on your own answer." });
-            return;
-        }
-
-        const answerRef = doc(db, "questions", id, "answers", answer.id);
-        const userVoteRef = doc(db, "users", user.uid, "votes", `answer-${answer.id}`);
-        const authorRef = doc(db, "users", answer.authorId);
-
-        try {
-            await runTransaction(db, async (transaction) => {
-                const userVoteDoc = await transaction.get(userVoteRef);
-                const answerDoc = await transaction.get(answerRef);
-                const authorDoc = await transaction.get(authorRef);
-                
-                if (!answerDoc.exists()) throw "Answer does not exist!";
-                if (!authorDoc.exists()) throw "Author does not exist!";
-
-                const currentPoints = authorDoc.data()?.points || 0;
-                const currentVote = userVoteDoc.exists() ? userVoteDoc.data().type : null;
-                
-                let pointsChange = 0;
-                let upvoteIncrement = 0;
-                let downvoteIncrement = 0;
-
-                if (currentVote === voteType) {
-                    transaction.delete(userVoteRef);
-                    if (voteType === 'up') {
-                        upvoteIncrement = -1;
-                        pointsChange = -5;
-                    } else {
-                        downvoteIncrement = -1;
-                    }
-                } else {
-                    transaction.set(userVoteRef, { type: voteType });
-                    if (currentVote === 'up') {
-                        upvoteIncrement = -1;
-                        pointsChange = -5;
-                    } else if (currentVote === 'down') {
-                        downvoteIncrement = -1;
-                    }
-
-                    if (voteType === 'up') {
-                        upvoteIncrement += 1;
-                        pointsChange += 5;
-                    } else {
-                        downvoteIncrement += 1;
-                    }
-                }
-
-                transaction.update(answerRef, {
-                    upvotes: increment(upvoteIncrement),
-                    downvotes: increment(downvoteIncrement),
-                });
-                
-                if (pointsChange !== 0 && answer.authorId) {
-                    transaction.update(authorRef, { points: currentPoints + pointsChange });
-                }
-            });
-        } catch (error) {
-            console.error(`Error ${voteType}ing answer:`, error);
-            toast({ variant: "destructive", title: "Error", description: "Your vote could not be recorded." });
-        }
-    };
-
-
-     const handleAcceptAnswer = async (answerToAccept: Answer) => {
-        if (!user || user.uid !== post?.authorId || !db) return;
+    const handleAcceptAnswer = async (answerToAccept: Answer) => {
+        if (!user || user.uid !== postAuthorId || !db) return;
 
         try {
             await runTransaction(db, async (transaction) => {
                 const isAccepting = !answerToAccept.isAccepted;
+                const questionRef = doc(db, "questions", postId);
+                const questionDoc = await transaction.get(questionRef);
+                const answersRef = collection(db, "questions", postId, "answers");
+                const answersSnapshot = await getDocs(query(answersRef));
 
-                // Loop through all answers to handle toggling
-                for (const answer of answers) {
-                    const answerRef = doc(db, "questions", id, "answers", answer.id);
-                    if (answer.id === answerToAccept.id) {
+                for (const answerDoc of answersSnapshot.docs) {
+                    const currentAnswer = { id: answerDoc.id, ...answerDoc.data() } as Answer;
+                    const answerRef = doc(db, "questions", postId, "answers", currentAnswer.id);
+                    if (currentAnswer.id === answerToAccept.id) {
                         transaction.update(answerRef, { isAccepted: isAccepting });
-                    } else if (answer.isAccepted) {
+                    } else if (currentAnswer.isAccepted) {
                         transaction.update(answerRef, { isAccepted: false });
                     }
                 }
-
-                // Point calculation
+                
                 const answerAuthorRef = doc(db, "users", answerToAccept.authorId);
-                const questionAuthorRef = doc(db, "users", post.authorId);
+                const questionAuthorRef = doc(db, "users", postAuthorId);
 
-                const answerAuthorDoc = await transaction.get(answerAuthorRef);
-                const questionAuthorDoc = await transaction.get(questionAuthorRef);
-
-                if (!answerAuthorDoc.exists() || !questionAuthorDoc.exists()) {
-                    throw new Error("User document not found");
-                }
-
-                let answererPoints = answerAuthorDoc.data().points || 0;
-                let questionerPoints = questionAuthorDoc.data().points || 0;
-                
-                // If there was a previously accepted answer by another user, revert their points
-                const previouslyAccepted = answers.find(a => a.isAccepted && a.id !== answerToAccept.id);
-                if (previouslyAccepted) {
-                     const prevAuthorRef = doc(db, "users", previouslyAccepted.authorId);
-                     const prevAuthorDoc = await transaction.get(prevAuthorRef);
-                     if (prevAuthorDoc.exists()) {
-                        const prevPoints = prevAuthorDoc.data().points || 0;
-                        transaction.update(prevAuthorRef, { points: prevPoints - 25 });
-                     }
-                }
-
-
-                if (isAccepting) {
-                    answererPoints += 25;
-                    questionerPoints += 5;
-                } else { // un-accepting
-                    answererPoints -= 25;
-                    questionerPoints -= 5;
-                }
-                
-                transaction.update(answerAuthorRef, { points: answererPoints });
-                transaction.update(questionAuthorRef, { points: questionerPoints });
+                transaction.update(answerAuthorRef, { points: increment(isAccepting ? 25 : -25) });
+                transaction.update(questionAuthorRef, { points: increment(isAccepting ? 5 : -5) });
             });
 
             toast({
@@ -429,7 +112,200 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
             });
         }
     };
+
+    return (
+        <Card className={cn(answer.isAccepted && "border-green-500 bg-green-500/5")}>
+            <CardHeader className="flex flex-row items-start gap-4">
+                <Link href={`/users/${answer.authorId}`}>
+                    <Avatar>
+                        <AvatarImage src={answer.avatar} />
+                        <AvatarFallback>{answer.fallback}</AvatarFallback>
+                    </Avatar>
+                </Link>
+                <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Link href={`/users/${answer.authorId}`} className="hover:underline">
+                                <span className="font-semibold">{answer.author}</span>
+                            </Link>
+                            <span className="text-sm text-muted-foreground">&middot; {answer.date && new Date(answer.date.seconds * 1000).toLocaleDateString()}</span>
+                        </div>
+                        {answer.isAccepted && (
+                            <div className="flex items-center gap-1 text-sm font-semibold text-green-600">
+                                <CheckCircle className="h-4 w-4" />
+                                Accepted Answer
+                            </div>
+                        )}
+                    </div>
+                    <p className="mt-2">{answer.content}</p>
+                     {answer.attachmentURL && (
+                        <div className="mt-4">
+                            <a href={answer.attachmentURL} target="_blank" rel="noopener noreferrer">
+                                <Button variant="outline" size="sm">
+                                    <Paperclip className="mr-2 h-4 w-4" />
+                                    {answer.attachmentName || 'View Attachment'}
+                                </Button>
+                            </a>
+                        </div>
+                    )}
+                </div>
+            </CardHeader>
+             <CardFooter className="flex justify-end gap-2">
+                 {user?.uid === postAuthorId && (
+                    <Button variant="outline" size="sm" onClick={() => handleAcceptAnswer(answer)}>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        {answer.isAccepted ? 'Unaccept' : 'Accept'}
+                    </Button>
+                 )}
+                <VoteButtons
+                    upvotes={upvotes}
+                    downvotes={downvotes}
+                    onUpvote={() => handleVote('up')}
+                    onDownvote={() => handleVote('down')}
+                    userVote={userVote}
+               />
+            </CardFooter>
+        </Card>
+    );
+}
+
+
+export default function ForumPostPage({ params }: { params: { id: string } }) {
+    const { id } = params;
+    const [post, setPost] = useState<Post | null>(null);
+    const [answers, setAnswers] = useState<Answer[]>([]);
+    const [newAnswer, setNewAnswer] = useState("");
+    const [attachment, setAttachment] = useState<File | null>(null);
+    const [user] = auth ? useAuthState(auth) : [null];
+    const { toast } = useToast();
+
+    const postVote = useVote({
+        contentType: 'question',
+        contentId: id,
+        authorId: post?.authorId || '',
+        initialUpvotes: post?.upvotes || 0,
+        initialDownvotes: post?.downvotes || 0,
+        points: { up: 2, down: 0 },
+        collectionPath: 'questions',
+    });
     
+    useEffect(() => {
+        if (!id || !db) return;
+        
+        const postUnsubscribe = onSnapshot(doc(db, "questions", id), (postSnapshot) => {
+            if (postSnapshot.exists()) {
+                setPost({ id: postSnapshot.id, ...postSnapshot.data() } as Post);
+            }
+        });
+
+        const answersCollection = collection(db, "questions", id, "answers");
+        const answersQuery = query(answersCollection, orderBy("date", "desc"));
+        const answersUnsubscribe = onSnapshot(answersQuery, (answersSnapshot) => {
+            const answersList = answersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Answer)).sort((a, b) => {
+                if (a.isAccepted && !b.isAccepted) return -1;
+                if (!a.isAccepted && b.isAccepted) return 1;
+                const scoreA = (a.upvotes || 0) - (a.downvotes || 0);
+                const scoreB = (b.upvotes || 0) - (b.downvotes || 0);
+                if (scoreA !== scoreB) return scoreB - scoreA;
+                if (b.date && a.date) {
+                   return b.date.seconds - a.date.seconds;
+                }
+                return 0;
+            });
+            setAnswers(answersList);
+        });
+
+        const incrementViewCount = async () => {
+             const postRef = doc(db, "questions", id);
+             await updateDoc(postRef, { views: increment(1) }).catch(err => {}); // Fail silently
+        }
+        incrementViewCount();
+
+        return () => {
+            postUnsubscribe();
+            answersUnsubscribe();
+        };
+    }, [id]);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > MAX_FILE_SIZE) {
+                toast({ variant: "destructive", title: "File too large", description: `Please select a file smaller than ${MAX_FILE_SIZE / 1024 / 1024}MB.` });
+                return;
+            }
+            if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+                toast({ variant: "destructive", title: "Invalid file type", description: "Please select a PNG, JPG, or PDF file." });
+                return;
+            }
+            setAttachment(file);
+        }
+    };
+    const handlePostAnswer = async () => {
+        if (!newAnswer.trim() || !user || !post || !db || !storage) return;
+        const newAnswerRef = doc(collection(db, "questions", id, "answers"));
+
+        try {
+            // Upload attachment in parallel
+            const uploadPromise = attachment ? (async () => {
+                const storageRef = ref(storage, `attachments/answers/${user.uid}/${newAnswerRef.id}_${attachment.name}`);
+                await uploadBytes(storageRef, attachment);
+                return await getDownloadURL(storageRef);
+            })() : Promise.resolve(null);
+
+            const transactionPromise = runTransaction(db, async (transaction) => {
+                const userDocRef = doc(db, "users", user.uid);
+                const userDoc = await transaction.get(userDocRef);
+                if (!userDoc.exists()) throw "User does not exist!";
+
+                const userData = userDoc.data();
+                const authorName = `${userData.firstName} ${userData.lastName}`;
+                const authorFallback = `${userData.firstName?.charAt(0) || ''}${userData.lastName?.charAt(0) || ''}`;
+                const authorAvatar = userData.photoURL || "";
+
+                transaction.update(userDocRef, { points: increment(15) });
+                transaction.update(doc(db, "questions", id), { replies: increment(1) });
+                
+                transaction.set(newAnswerRef, {
+                    author: authorName,
+                    avatar: authorAvatar,
+                    fallback: authorFallback,
+                    content: newAnswer,
+                    date: serverTimestamp(),
+                    upvotes: 0,
+                    downvotes: 0,
+                    authorId: user.uid,
+                    isAccepted: false,
+                    attachmentURL: "", // Placeholder
+                    attachmentName: attachment?.name || "",
+                });
+
+                if (post.authorId && post.authorId !== user.uid && userData.notificationPreferences?.answersOnQuestions) {
+                    const notificationRef = doc(collection(db, 'users', post.authorId, 'notifications'));
+                    transaction.set(notificationRef, {
+                        type: 'new_answer',
+                        message: `${authorName} answered your question: "${post.title}"`,
+                        link: `/forum/${id}`,
+                        isRead: false,
+                        date: serverTimestamp(),
+                    });
+                }
+            });
+
+            const [attachmentURL] = await Promise.all([uploadPromise, transactionPromise]);
+            
+            if (attachmentURL) {
+                await updateDoc(newAnswerRef, { attachmentURL });
+            }
+
+            setNewAnswer("");
+            setAttachment(null);
+        } catch (error) {
+            console.error("Error posting answer: ", error);
+            toast({ variant: "destructive", title: "Error", description: "Could not post your answer." });
+        }
+    };
+
     if (!post) {
         return <div>Loading...</div>;
     }
@@ -439,11 +315,9 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
     };
     
     const groupedTags = post.tags?.reduce((acc, tag) => {
-    if (!acc[tag.class]) {
-        acc[tag.class] = [];
-    }
-    acc[tag.class].push(tag.topic);
-    return acc;
+        if (!acc[tag.class]) acc[tag.class] = [];
+        acc[tag.class].push(tag.topic);
+        return acc;
     }, {} as Record<string, string[]>);
 
 
@@ -454,7 +328,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                     <CardTitle className="font-headline text-3xl">{post.title}</CardTitle>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Avatar className="h-6 w-6">
-                             <UserLink authorId={post.authorId}>
+                            <UserLink authorId={post.authorId}>
                                 <AvatarImage src={post.avatar} />
                             </UserLink>
                             <AvatarFallback>{post.fallback}</AvatarFallback>
@@ -493,11 +367,11 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 </CardContent>
                  <CardFooter className="flex justify-end">
                      <VoteButtons
-                        upvotes={post.upvotes || 0}
-                        downvotes={post.downvotes || 0}
-                        onUpvote={() => handlePostVote('up')}
-                        onDownvote={() => handlePostVote('down')}
-                        userVote={postUserVote}
+                        upvotes={postVote.upvotes}
+                        downvotes={postVote.downvotes}
+                        onUpvote={() => postVote.handleVote('up')}
+                        onDownvote={() => postVote.handleVote('down')}
+                        userVote={postVote.userVote}
                      />
                 </CardFooter>
             </Card>
@@ -506,60 +380,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
 
             <div className="grid gap-4">
                 {answers.map(answer => (
-                    <Card key={answer.id} className={cn(
-                        answer.isAccepted && "border-green-500 bg-green-500/5"
-                    )}>
-                        <CardHeader className="flex flex-row items-start gap-4">
-                            <Link href={`/users/${answer.authorId}`}>
-                                <Avatar>
-                                    <AvatarImage src={answer.avatar} />
-                                    <AvatarFallback>{answer.fallback}</AvatarFallback>
-                                </Avatar>
-                            </Link>
-                            <div className="flex-1">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <UserLink authorId={answer.authorId}>
-                                            <span className="font-semibold">{answer.author}</span>
-                                        </UserLink>
-                                        <span className="text-sm text-muted-foreground">&middot; {answer.date && new Date(answer.date.seconds * 1000).toLocaleDateString()}</span>
-                                    </div>
-                                    {answer.isAccepted && (
-                                        <div className="flex items-center gap-1 text-sm font-semibold text-green-600">
-                                            <CheckCircle className="h-4 w-4" />
-                                            Accepted Answer
-                                        </div>
-                                    )}
-                                </div>
-                                <p className="mt-2">{answer.content}</p>
-                                 {answer.attachmentURL && (
-                                    <div className="mt-4">
-                                        <a href={answer.attachmentURL} target="_blank" rel="noopener noreferrer">
-                                            <Button variant="outline" size="sm">
-                                                <Paperclip className="mr-2 h-4 w-4" />
-                                                {answer.attachmentName || 'View Attachment'}
-                                            </Button>
-                                        </a>
-                                    </div>
-                                )}
-                            </div>
-                        </CardHeader>
-                         <CardFooter className="flex justify-end gap-2">
-                             {user?.uid === post.authorId && (
-                                <Button variant="outline" size="sm" onClick={() => handleAcceptAnswer(answer)}>
-                                    <CheckCircle className="mr-2 h-4 w-4" />
-                                    {answer.isAccepted ? 'Unaccept' : 'Accept'}
-                                </Button>
-                             )}
-                            <VoteButtons
-                                upvotes={answer.upvotes || 0}
-                                downvotes={answer.downvotes || 0}
-                                onUpvote={() => handleAnswerVote(answer, 'up')}
-                                onDownvote={() => handleAnswerVote(answer, 'down')}
-                                userVote={userVotes[answer.id]}
-                           />
-                        </CardFooter>
-                    </Card>
+                    <AnswerComponent key={answer.id} answer={answer} postId={id} postAuthorId={post.authorId} />
                 ))}
             </div>
 
@@ -570,7 +391,7 @@ export default function ForumPostPage({ params }: { params: { id: string } }) {
                 <CardContent className="grid gap-4">
                     <Textarea placeholder="Type your answer here." rows={5} value={newAnswer} onChange={(e) => setNewAnswer(e.target.value)} />
                     <div>
-                        <Input id="attachment-answer" type="file" onChange={handleFileChange} />
+                        <Input id="attachment-answer" type="file" onChange={handleFileChange} accept={ALLOWED_FILE_TYPES.join(',')} />
                          {attachment && (
                             <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md">
                                 <FileIcon className="h-4 w-4" />

@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -46,6 +47,53 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 196 100% 51%;
+  }
+
+  /* Profile Themes */
+  .theme-sunset {
+    --card: 25 10% 95%;
+    --card-foreground: 10 80% 15%;
+    --primary: 30 90% 55%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 330 80% 60%;
+    --background: 25 20% 98%;
+  }
+  .dark .theme-sunset {
+    --card: 20 20% 10%;
+    --card-foreground: 30 80% 90%;
+    --primary: 30 80% 60%;
+    --accent: 330 70% 55%;
+    --background: 20 20% 5%;
+  }
+
+  .theme-forest {
+    --card: 120 10% 95%;
+    --card-foreground: 120 60% 10%;
+    --primary: 130 50% 45%;
+    --accent: 100 40% 55%;
+    --background: 120 20% 98%;
+  }
+  .dark .theme-forest {
+    --card: 120 25% 8%;
+    --card-foreground: 110 60% 85%;
+    --primary: 130 45% 50%;
+    --accent: 100 35% 50%;
+    --background: 120 25% 4%;
+  }
+
+  .theme-ocean {
+    --card: 210 20% 95%;
+    --card-foreground: 220 80% 15%;
+    --primary: 200 80% 50%;
+    --accent: 180 60% 45%;
+    --background: 210 30% 98%;
+  }
+  .dark .theme-ocean {
+    --card: 220 40% 8%;
+    --card-foreground: 200 70% 88%;
+    --primary: 200 75% 55%;
+    --accent: 180 55% 50%;
+    --background: 220 40% 4%;
   }
 }
 

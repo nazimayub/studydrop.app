@@ -176,16 +176,9 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
     const handlePostComment = async () => {
         if (!newComment.trim() || !user || !db || !storage || !commentsCollectionRef) return;
         setIsLoading(true);
-        const newCommentRef = doc(commentsCollectionRef);
         
         try {
-            const uploadPromise = attachment ? (async () => {
-                const storageRef = ref(storage, `attachments/comments/${user.uid}/${newCommentRef.id}_${attachment.name}`);
-                await uploadBytes(storageRef, attachment);
-                return getDownloadURL(storageRef);
-            })() : Promise.resolve(null);
-            
-            const transactionPromise = runTransaction(db, async (transaction) => {
+            const newCommentRef = await runTransaction(db, async (transaction) => {
                 const userDocRef = doc(db, "users", user.uid);
                 const userDocSnap = await transaction.get(userDocRef);
                 if (!userDocSnap.exists()) throw "User does not exist";
@@ -196,8 +189,9 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
                 const authorFallback = (user.displayName?.charAt(0) || userData.firstName?.charAt(0) || '') + (user.displayName?.split(' ')[1]?.charAt(0) || userData.lastName?.charAt(0) || '');
 
                 transaction.update(userDocRef, { points: increment(2) });
-
-                transaction.set(newCommentRef, {
+                
+                const commentRef = doc(commentsCollectionRef);
+                transaction.set(commentRef, {
                     authorId: user.uid, authorName, authorAvatar, authorFallback,
                     content: newComment,
                     date: serverTimestamp(),
@@ -206,27 +200,35 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
                 });
 
                  if (contentAuthorId && contentAuthorId !== user.uid && userData.notificationPreferences?.commentsOnNotes) {
-                     const notificationRef = doc(collection(db, 'users', contentAuthorId, 'notifications'));
-                     const link = contentType === 'note' ? `/notes/${contentId}` : `/forum/${contentId}`;
-                     const contentDoc = await getDoc(doc(db, collectionName, contentId));
-                     const title = contentDoc.exists() ? contentDoc.data().title : 'your post';
-
-                     transaction.set(notificationRef, {
-                        type: 'new_comment',
-                        message: `${authorName} commented on ${title}`,
-                        link, isRead: false, date: serverTimestamp(),
-                    });
+                     const contentDocRef = doc(db, collectionName, contentId);
+                     const contentDoc = await transaction.get(contentDocRef);
+                     if (contentDoc.exists()) { // Check if the post exists before sending notification
+                        const title = contentDoc.data().title || 'your post';
+                        const notificationRef = doc(collection(db, 'users', contentAuthorId, 'notifications'));
+                        const link = contentType === 'note' ? `/notes/${contentId}` : `/forum/${contentId}`;
+                        transaction.set(notificationRef, {
+                            type: 'new_comment',
+                            message: `${authorName} commented on ${title}`,
+                            link, isRead: false, date: serverTimestamp(),
+                        });
+                     }
                 }
+                return commentRef;
             });
             
-            const [attachmentURL] = await Promise.all([uploadPromise, transactionPromise]);
-
-            if (attachmentURL) {
+            if (attachment) {
+                const storageRef = ref(storage, `attachments/comments/${user.uid}/${newCommentRef.id}_${attachment.name}`);
+                await uploadBytes(storageRef, attachment);
+                const attachmentURL = await getDownloadURL(storageRef);
                 await updateDoc(newCommentRef, { attachmentURL });
             }
 
             setNewComment("");
             setAttachment(null);
+            if (document.getElementById('attachment-comment')) {
+                 (document.getElementById('attachment-comment') as HTMLInputElement).value = '';
+            }
+
         } catch (error) {
             console.error("Error adding comment: ", error);
             toast({ variant: "destructive", title: "Error", description: "Could not post your comment." });
@@ -256,7 +258,12 @@ export function CommentsSection({ contentId, contentType, contentAuthorId }: Com
                             <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md">
                                 <FileIcon className="h-4 w-4" />
                                 <span>{attachment.name}</span>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => setAttachment(null)}>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 ml-auto" onClick={() => {
+                                    setAttachment(null);
+                                     if (document.getElementById('attachment-comment')) {
+                                         (document.getElementById('attachment-comment') as HTMLInputElement).value = '';
+                                    }
+                                }}>
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>

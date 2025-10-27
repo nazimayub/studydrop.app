@@ -95,7 +95,7 @@ function LoginFormComponent() {
     }
 
   return (
-    <div className="flex w-full flex-col items-center justify-center min-h-screen bg-secondary/50 p-4">
+    <div className="w-full flex flex-col items-center justify-center min-h-screen p-4 animated-gradient bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500">
       <div className="mb-8">
         <Link href="/">
            <Logo className="w-48" />
@@ -131,7 +131,7 @@ function LoginFormComponent() {
                   Forgot your password?
                 </Link>
               </div>
-              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.targe.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
+              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} />
             </div>
             <Button onClick={handleLogin} className="w-full">
             Login

@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
     }
 
   return (
-    <div className="flex w-full flex-col items-center justify-center min-h-screen bg-secondary/50 p-4">
+    <div className="w-full flex flex-col items-center justify-center min-h-screen p-4 animated-gradient bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500">
       <div className="mb-8">
         <Link href="/">
            <Logo className="w-48" />

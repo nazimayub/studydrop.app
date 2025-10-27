@@ -1,8 +1,7 @@
-
 "use client"
 
 import { useState, useEffect } from "react";
-import { collection, addDoc, doc, runTransaction } from "firebase/firestore";
+import { collection, addDoc, doc, runTransaction, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useRouter } from "next/navigation";
 import { db, auth, storage } from "@/lib/firebase/firebase";
@@ -38,7 +37,7 @@ export default function NewNotePage() {
 
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
-    const [user] = auth ? useAuthState(auth) : [null];
+    const [user] = useAuthState(auth);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -90,17 +89,10 @@ export default function NewNotePage() {
 
         setIsLoading(true);
 
+        const newNoteRef = doc(collection(db, "notes"));
+
         try {
-             let attachmentURL = "";
-             let attachmentName = "";
-             if (attachment) {
-                 const storageRef = ref(storage, `attachments/notes/${user.uid}/${Date.now()}_${attachment.name}`);
-                 await uploadBytes(storageRef, attachment);
-                 attachmentURL = await getDownloadURL(storageRef);
-                 attachmentName = attachment.name;
-             }
-             
-             await runTransaction(db, async (transaction) => {
+            const transactionPromise = runTransaction(db, async (transaction) => {
                 const userDocRef = doc(db, "users", user.uid);
                 const userDoc = await transaction.get(userDocRef);
                 if (!userDoc.exists()) {
@@ -109,7 +101,6 @@ export default function NewNotePage() {
                 const newPoints = (userDoc.data().points || 0) + 10;
                 transaction.update(userDocRef, { points: newPoints });
 
-                const newNoteRef = doc(collection(db, "notes"));
                 transaction.set(newNoteRef, {
                     title,
                     content,
@@ -121,10 +112,19 @@ export default function NewNotePage() {
                     isPublic: true,
                     upvotes: 0,
                     downvotes: 0,
-                    attachmentURL,
-                    attachmentName
+                    attachmentURL: "",
+                    attachmentName: attachment?.name || "",
                 });
             });
+
+            const uploadPromise = attachment ? (async () => {
+                const storageRef = ref(storage, `attachments/notes/${user.uid}/${newNoteRef.id}_${attachment.name}`);
+                await uploadBytes(storageRef, attachment);
+                const attachmentURL = await getDownloadURL(storageRef);
+                await updateDoc(newNoteRef, { attachmentURL });
+            })() : Promise.resolve();
+
+            await Promise.all([transactionPromise, uploadPromise]);
             
             toast({
                 title: "Note Created!",

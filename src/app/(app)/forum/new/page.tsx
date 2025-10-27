@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react";
@@ -33,7 +32,7 @@ export default function NewQuestionPage() {
     const [attachment, setAttachment] = useState<File | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
-    const [user] = auth ? useAuthState(auth) : [null];
+    const [user] = useAuthState(auth);
     const { toast } = useToast();
     
     const [selectedClass, setSelectedClass] = useState("");
@@ -89,9 +88,10 @@ export default function NewQuestionPage() {
         if (!db || !storage) return;
 
         setIsLoading(true);
+        const newQuestionRef = doc(collection(db, "questions"));
 
         try {
-            await runTransaction(db, async (transaction) => {
+            const transactionPromise = runTransaction(db, async (transaction) => {
                 let authorName = "Anonymous";
                 let authorFallback = "A";
                 let authorAvatar = "";
@@ -110,16 +110,6 @@ export default function NewQuestionPage() {
                     }
                 }
                 
-                let attachmentURL = "";
-                let attachmentName = "";
-                if (attachment) {
-                    const storageRef = ref(storage, `attachments/questions/${user.uid}/${Date.now()}_${attachment.name}`);
-                    await uploadBytes(storageRef, attachment); // This should be outside the transaction
-                    attachmentURL = await getDownloadURL(storageRef);
-                    attachmentName = attachment.name;
-                }
-
-                const newQuestionRef = doc(collection(db, "questions"));
                 transaction.set(newQuestionRef, {
                     title,
                     tags,
@@ -133,10 +123,19 @@ export default function NewQuestionPage() {
                     replies: 0,
                     upvotes: 0,
                     downvotes: 0,
-                    attachmentURL,
-                    attachmentName,
+                    attachmentURL: "",
+                    attachmentName: attachment?.name || "",
                 });
             });
+
+            const uploadPromise = attachment ? (async () => {
+                const storageRef = ref(storage, `attachments/questions/${user.uid}/${newQuestionRef.id}_${attachment.name}`);
+                await uploadBytes(storageRef, attachment);
+                const attachmentURL = await getDownloadURL(storageRef);
+                await updateDoc(newQuestionRef, { attachmentURL });
+            })() : Promise.resolve();
+
+            await Promise.all([transactionPromise, uploadPromise]);
 
             router.push("/forum");
         } catch (error) {
@@ -190,7 +189,7 @@ export default function NewQuestionPage() {
                                  <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={!selectedClass}>
                                     <SelectTrigger id="unit-select">
                                         <SelectValue placeholder="Select a Unit" />
-                                    </SelectTrigger>
+                                    </Trigger>
                                     <SelectContent>
                                         {availableUnits.map(unit => (
                                             <SelectItem key={unit} value={unit}>{unit}</SelectItem>

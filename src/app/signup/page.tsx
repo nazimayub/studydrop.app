@@ -80,27 +80,13 @@ export default function SignupPage() {
             router.push("/dashboard");
         } catch (error: any) {
             console.error("Error signing up: ", error);
-            setIsLoading(false); // Stop loading on error
-            if (error.code === 'auth/email-already-in-use') {
-                toast({
-                    variant: "destructive",
-                    title: "Email Already Exists",
-                    description: "This email address is already in use. Please login instead.",
-                });
-            } else if (error.code === 'auth/weak-password') {
-                 toast({
-                    variant: "destructive",
-                    title: "Weak Password",
-                    description: "Password should be at least 6 characters.",
-                });
-            }
-             else {
-                toast({
-                    variant: "destructive",
-                    title: "Sign-up Failed",
-                    description: error.message || "An unexpected error occurred. Please check your configuration and try again.",
-                });
-            }
+            toast({
+                variant: "destructive",
+                title: "Sign-up Failed",
+                description: error.message || "An unexpected error occurred. Please check your configuration and try again.",
+            });
+        } finally {
+            setIsLoading(false);
         }
     }
 
@@ -150,20 +136,21 @@ export default function SignupPage() {
             router.push("/dashboard");
         } catch (error: any) {
             console.error("Error with Google signup: ", error);
-            setIsGoogleLoading(false); // Stop loading on error
              if (error.code === 'auth/popup-closed-by-user') {
                  toast({
                     variant: "destructive",
                     title: "Sign-up Canceled",
                     description: "You closed the Google sign-up window before completing the process.",
                 });
-                return;
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "Google Sign-up Failed",
+                    description: error.message || "There was a problem signing up with Google. Please check your configuration and try again.",
+                });
             }
-            toast({
-                variant: "destructive",
-                title: "Google Sign-up Failed",
-                description: "There was a problem signing up with Google. Please check your configuration and try again.",
-            });
+        } finally {
+            setIsGoogleLoading(false);
         }
     };
 

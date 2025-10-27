@@ -128,7 +128,7 @@ function AppLayoutContent({
           <UserNav />
         </header>
         <main className="flex-1 p-4 sm:px-6 sm:py-0">
-          {children}
+          <div className="container mx-auto max-w-7xl py-6">{children}</div>
         </main>
       </div>
     </div>

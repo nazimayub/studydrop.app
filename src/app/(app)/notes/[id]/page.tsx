@@ -6,14 +6,21 @@ import { doc, onSnapshot, increment } from "firebase/firestore"
 import { db, auth } from "@/lib/firebase/firebase"
 import Link from "next/link"
 import { useVote } from "@/hooks/use-vote"
-
+import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { VoteButtons } from "@/components/app/vote-buttons"
 import { CommentsSection } from "@/components/app/comments-section"
-import { Paperclip } from "lucide-react"
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel"
+import placeholderImages from "@/lib/placeholder-images.json"
 
 interface NoteTag {
     class: string;
@@ -108,11 +115,30 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
                 </div>
             )}
           <div className="mb-4">
-              <iframe
-                src="/AMSTuD Foreign and Domestic Policy of Period 4.pdf"
-                className="w-full h-[600px] border rounded-md"
-                title="AMSTuD Foreign and Domestic Policy of Period 4.pdf"
-              ></iframe>
+              <Carousel className="w-full">
+                <CarouselContent>
+                  {placeholderImages.noteScreenshots.map((image, index) => (
+                    <CarouselItem key={index}>
+                      <div className="p-1">
+                        <Card>
+                          <CardContent className="flex aspect-[16/9] items-center justify-center p-0 overflow-hidden rounded-lg">
+                            <Image
+                              src={image.src}
+                              alt={image.alt}
+                              width={image.width}
+                              height={image.height}
+                              data-ai-hint={image['data-ai-hint']}
+                              className="object-cover w-full h-full"
+                            />
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <CarouselPrevious />
+                <CarouselNext />
+              </Carousel>
           </div>
           <div className="prose dark:prose-invert max-w-none">
             <p style={{ whiteSpace: 'pre-line' }}>{note.content}</p>

@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Activity, NotebookText, UploadCloud, Users, Menu } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import placeholderImages from '@/lib/placeholder-images.json';
 
 export default function LandingPage() {
   return (
@@ -160,7 +161,7 @@ export default function LandingPage() {
                   <p className="mb-4">"This app is a game-changer. The community forum saved me hours of frustration before exams."</p>
                   <div className="flex items-center gap-4">
                     <Avatar>
-                      <AvatarImage src="https://picsum.photos/seed/1/40/40" data-ai-hint="woman smiling" />
+                      <AvatarImage src={placeholderImages.landingTestimonials[0].src} width={40} height={40} data-ai-hint={placeholderImages.landingTestimonials[0]['data-ai-hint']} />
                       <AvatarFallback>JD</AvatarFallback>
                     </Avatar>
                     <div>
@@ -175,7 +176,7 @@ export default function LandingPage() {
                   <p className="mb-4">"The rewards system actually makes studying fun. I'm more motivated than ever to participate."</p>
                   <div className="flex items-center gap-4">
                     <Avatar>
-                      <AvatarImage src="https://picsum.photos/seed/2/40/40" data-ai-hint="man smiling" />
+                      <AvatarImage src={placeholderImages.landingTestimonials[1].src} width={40} height={40} data-ai-hint={placeholderImages.landingTestimonials[1]['data-ai-hint']} />
                       <AvatarFallback>SM</AvatarFallback>
                     </Avatar>
                     <div>

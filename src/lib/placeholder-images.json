@@ -1,0 +1,55 @@
+{
+  "landingTestimonials": [
+    {
+      "src": "https://picsum.photos/seed/1/40/40",
+      "alt": "Smiling woman for testimonial",
+      "data-ai-hint": "woman smiling",
+      "width": 40,
+      "height": 40
+    },
+    {
+      "src": "https://picsum.photos/seed/2/40/40",
+      "alt": "Smiling man for testimonial",
+      "data-ai-hint": "man smiling",
+      "width": 40,
+      "height": 40
+    }
+  ],
+  "noteScreenshots": [
+    {
+      "src": "https://picsum.photos/seed/screenshot1/1280/720",
+      "alt": "Screenshot of notes about foreign policy.",
+      "data-ai-hint": "document screenshot",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "src": "https://picsum.photos/seed/screenshot2/1280/720",
+      "alt": "Screenshot of a historical map related to domestic policy.",
+      "data-ai-hint": "map screenshot",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "src": "https://picsum.photos/seed/screenshot3/1280/720",
+      "alt": "Screenshot of a chart showing policy impacts.",
+      "data-ai-hint": "chart graph",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "src": "https://picsum.photos/seed/screenshot4/1280/720",
+      "alt": "Screenshot of a timeline of policy events.",
+      "data-ai-hint": "timeline infographic",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "src": "https://picsum.photos/seed/screenshot5/1280/720",
+      "alt": "Screenshot of a presentation slide on policy.",
+      "data-ai-hint": "presentation slide",
+      "width": 1280,
+      "height": 720
+    }
+  ]
+}

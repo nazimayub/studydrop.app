@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link"
@@ -8,7 +9,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { Home, NotebookText, MessageSquare, Award, Activity } from "lucide-react"
+import { Home, NotebookText, MessageSquare, Award, Activity, BrainCircuit } from "lucide-react"
 
 const navItems = [
     { href: "/dashboard", icon: Home, label: "Dashboard" },
@@ -16,6 +17,7 @@ const navItems = [
     { href: "/notes", icon: NotebookText, label: "Notes" },
     { href: "/forum", icon: MessageSquare, label: "Q&A Forum" },
     { href: "/rewards", icon: Award, label: "Rewards" },
+    { href: "/ai-assistant", icon: BrainCircuit, label: "AI Assistant" },
 ]
 
 export function AppNav({ isMobile = false }: { isMobile?: boolean }) {

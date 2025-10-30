@@ -10,6 +10,7 @@ import {
   BookOpen,
   MessageSquare,
   Users,
+  Database,
 } from "lucide-react"
 import {
   collection,
@@ -44,6 +45,9 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge";
 import { UserNav } from "@/components/app/user-nav";
+import { seedDatabase } from "@/lib/seed";
+import { useToast } from "@/hooks/use-toast";
+import { LoadingButton } from "@/components/ui/loading-button";
 
 
 interface NoteTag {
@@ -67,6 +71,8 @@ export default function Dashboard() {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [enrolledClasses, setEnrolledClasses] = useState<string[]>([]);
   const [userName, setUserName] = useState('');
+  const { toast } = useToast();
+  const [isSeeding, setIsSeeding] = useState(false);
 
   useEffect(() => {
     if (!user || !db) return;
@@ -157,6 +163,27 @@ export default function Dashboard() {
     return () => unsubscribes.forEach(unsub => unsub());
     
   }, [user]);
+
+  const handleSeedDatabase = async () => {
+    if (!db) return;
+    setIsSeeding(true);
+    try {
+        await seedDatabase(db);
+        toast({
+            title: "Database Seeded!",
+            description: "20 new notes and 20 new questions have been created."
+        })
+    } catch(error) {
+        console.error("Error seeding database: ", error);
+        toast({
+            variant: "destructive",
+            title: "Seeding Failed",
+            description: "Could not seed the database. Check console for errors."
+        })
+    } finally {
+        setIsSeeding(false);
+    }
+  }
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
@@ -301,6 +328,21 @@ export default function Dashboard() {
             </Table>
             </div>
         </CardContent>
+        </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle>Developer Tools</CardTitle>
+                <CardDescription>Actions for development and testing purposes.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <LoadingButton loading={isSeeding} onClick={handleSeedDatabase}>
+                    <Database className="mr-2 h-4 w-4" />
+                    Seed Database
+                </LoadingButton>
+                <p className="text-sm text-muted-foreground mt-2">
+                    This will clear all notes and questions and generate 20 new fake notes and 20 fake questions.
+                </p>
+            </CardContent>
         </Card>
     </main>
   )

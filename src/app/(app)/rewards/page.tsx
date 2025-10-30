@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { collection, getDocs, query, orderBy, limit, doc, getDoc, collectionGroup, where, runTransaction } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { Award, Star, Trophy, Palette } from "lucide-react";
+import { Award, Star, Trophy, Palette, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -108,8 +108,6 @@ export default function RewardsPage() {
             setLeaderboard(leaderboardData);
         } catch (error) {
             console.error("Error fetching leaderboard: ", error);
-            // This might be a permission error if rules are not set correctly.
-            // A toast is shown in the main fetch function.
         }
     };
     
@@ -129,7 +127,7 @@ export default function RewardsPage() {
                 });
             }
         });
-    }, [user]);
+    }, [user, toast]);
 
     const handleUnlockTheme = async (theme: Theme) => {
         if (!user || !currentUserData || !db) return;
@@ -201,10 +199,17 @@ export default function RewardsPage() {
             <TabsContent value="badges">
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {badges.map(badge => (
-                        <Card key={badge.name} className={badge.achieved ? 'border-primary' : ''}>
-                            <CardHeader>
+                        <Card key={badge.name} className={cn("transition-all", badge.achieved ? 'border-primary/80 shadow-lg' : 'border-dashed')}>
+                           <CardHeader className={cn("relative", badge.achieved && "bg-gradient-to-br from-primary/10 to-accent/10")}>
+                                {badge.achieved && (
+                                    <div className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white">
+                                        <CheckCircle className="h-4 w-4" />
+                                    </div>
+                                )}
                                 <div className="flex items-center gap-4">
-                                    <badge.icon className={`h-8 w-8 ${badge.achieved ? 'text-primary' : 'text-muted-foreground'}`} />
+                                    <div className={cn("flex h-12 w-12 items-center justify-center rounded-lg", badge.achieved ? 'bg-primary/20' : 'bg-muted')}>
+                                        <badge.icon className={cn("h-8 w-8", badge.achieved ? 'text-primary' : 'text-muted-foreground')} />
+                                    </div>
                                     <div>
                                         <CardTitle>{badge.name}</CardTitle>
                                         <CardDescription>{badge.description}</CardDescription>
@@ -214,6 +219,7 @@ export default function RewardsPage() {
                             {!badge.achieved && badge.progress !== undefined && (
                                 <CardContent>
                                     <Progress value={badge.progress} className="h-2" />
+                                     <p className="text-xs text-muted-foreground mt-1 text-center">{Math.round(badge.progress)}% complete</p>
                                 </CardContent>
                             )}
                         </Card>
@@ -311,5 +317,3 @@ export default function RewardsPage() {
     </div>
   )
 }
-
-    

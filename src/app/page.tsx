@@ -149,26 +149,16 @@ export default function LandingPage() {
           <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
             <div className="space-y-3">
               <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight font-headline">
-                Trusted by Students Worldwide
+                What students are saying
               </h2>
               <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                See how Open Desk is transforming the way students learn and achieve their academic goals.
+                We're helping students save time and understand concepts better.
               </p>
             </div>
             <div className="mx-auto w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 pt-12">
                <Card>
                 <CardContent className="pt-6">
-                  <p className="mb-4">"It just makes things simpler. I can see what I need to do and actually get it done without overthinking."</p>
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <p className="font-semibold">High School Student</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="mb-4">"It’s nice not having to dig through messages to find what my team decided. Everything’s in one place."</p>
+                  <p className="mb-4">"Wasn't sure about this at first, but the catch-up feed is actually useful. I don't have to chase my friends for notes anymore."</p>
                   <div className="flex items-center gap-4">
                     <div>
                       <p className="font-semibold">High School Sophomore</p>
@@ -178,17 +168,7 @@ export default function LandingPage() {
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <p className="mb-4">"The AI study guide creator is great for finals. It breaks down huge topics into manageable chunks."</p>
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <p className="font-semibold">College Freshman</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="mb-4">"Getting help on the Q&A forum is way faster than waiting for office hours. I got an answer to my calculus problem in like 20 minutes."</p>
+                  <p className="mb-4">"I uploaded my messy notes for my APUSH class, and the AI assistant cleaned them up and made practice questions. I was surprised it worked so well."</p>
                   <div className="flex items-center gap-4">
                     <div>
                       <p className="font-semibold">High School Junior</p>
@@ -198,17 +178,37 @@ export default function LandingPage() {
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <p className="mb-4">"I upload my lecture slides, and the AI helps me create summaries and flashcards. It's saved me hours of work."</p>
+                  <p className="mb-4">"The Q&A forum is less intimidating than asking in a giant lecture hall. Got a solid answer on a stats problem without feeling dumb."</p>
                   <div className="flex items-center gap-4">
                     <div>
-                      <p className="font-semibold">College Sophomore</p>
+                      <p className="font-semibold">College Freshman</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <p className="mb-4">"The points and rewards system is surprisingly motivating. It makes studying feel like less of a chore."</p>
+                  <p className="mb-4">"Honestly just started using it for the reward points, but I ended up actually learning from other people's notes. It's a decent system."</p>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="font-semibold">High School Senior</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="mb-4">"Figuring out what to study for midterms is always a mess. The AI study guide tool helped me focus on what's actually important for my bio exam."</p>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="font-semibold">High School Junior</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="mb-4">"I thought this would be just another school app, but being able to see how other people explain concepts in the forum is actually pretty helpful for my physics class."</p>
                   <div className="flex items-center gap-4">
                     <div>
                       <p className="font-semibold">High School Senior</p>
@@ -218,20 +218,20 @@ export default function LandingPage() {
               </Card>
                <Card>
                 <CardContent className="pt-6">
-                  <p className="mb-4">"Being able to see notes from other students in my class is a game-changer. It helps me fill in gaps in my own notes."</p>
+                  <p className="mb-4">"My friend sent me a link to a note, and I didn't think much of it. But I ended up finding a whole set of notes for my chem class that made sense."</p>
                   <div className="flex items-center gap-4">
                     <div>
-                      <p className="font-semibold">University Student</p>
+                      <p className="font-semibold">High School Sophomore</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
                <Card>
                 <CardContent className="pt-6">
-                  <p className="mb-4">"The catch-up feed is perfect. I just log in and see exactly what's new in my classes without having to ask around."</p>
+                  <p className="mb-4">"Was expecting to be confused, but it's surprisingly straightforward. Found a study guide for my Econ 101 final that was actually on point."</p>
                   <div className="flex items-center gap-4">
                     <div>
-                      <p className="font-semibold">College Junior</p>
+                      <p className="font-semibold">College Sophomore</p>
                     </div>
                   </div>
                 </CardContent>
@@ -254,3 +254,5 @@ export default function LandingPage() {
     </div>
   );
 }
+
+    

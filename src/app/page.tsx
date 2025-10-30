@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Activity, NotebookText, UploadCloud, Users, Menu } from 'lucide-react';
+import { Activity, NotebookText, UploadCloud, Users, Menu, BrainCircuit } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import placeholderImages from '@/lib/placeholder-images.json';
@@ -126,11 +126,11 @@ export default function LandingPage() {
               </div>
               <div className="grid gap-1 text-center">
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
-                  <UploadCloud className="h-8 w-8 text-primary" />
+                  <BrainCircuit className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold font-headline">Media Uploader</h3>
+                <h3 className="text-xl font-bold font-headline">AI Coach</h3>
                 <p className="text-sm text-muted-foreground">
-                   Easily upload any media type—images, documents, or videos—to enrich your notes and questions.
+                   Helps write better notes and makes review easier.
                 </p>
               </div>
               <div className="grid gap-1 text-center">
@@ -158,30 +158,20 @@ export default function LandingPage() {
             <div className="mx-auto w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 pt-12">
                <Card>
                 <CardContent className="pt-6">
-                  <p className="mb-4">"This app is a game-changer. The community forum saved me hours of frustration before exams."</p>
+                  <p className="mb-4">"It just makes things simpler. I can see what I need to do and actually get it done without overthinking."</p>
                   <div className="flex items-center gap-4">
-                    <Avatar>
-                      <AvatarImage src={placeholderImages.landingTestimonials[0].src} width={40} height={40} data-ai-hint={placeholderImages.landingTestimonials[0]['data-ai-hint']} />
-                      <AvatarFallback>JD</AvatarFallback>
-                    </Avatar>
                     <div>
-                      <p className="font-semibold">Jane Doe</p>
-                      <p className="text-sm text-muted-foreground">University Student</p>
+                      <p className="font-semibold">High School Student</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <p className="mb-4">"The rewards system actually makes studying fun. I'm more motivated than ever to participate."</p>
+                  <p className="mb-4">"It’s nice not having to dig through messages to find what my team decided. Everything’s in one place."</p>
                   <div className="flex items-center gap-4">
-                    <Avatar>
-                      <AvatarImage src={placeholderImages.landingTestimonials[1].src} width={40} height={40} data-ai-hint={placeholderImages.landingTestimonials[1]['data-ai-hint']} />
-                      <AvatarFallback>SM</AvatarFallback>
-                    </Avatar>
                     <div>
-                      <p className="font-semibold">Steve Miller</p>
-                      <p className="text-sm text-muted-foreground">High School Student</p>
+                      <p className="font-semibold">High School Sophomore</p>
                     </div>
                   </div>
                 </CardContent>

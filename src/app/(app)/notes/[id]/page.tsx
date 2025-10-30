@@ -82,6 +82,30 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="grid gap-6">
+      <Carousel className="w-full">
+        <CarouselContent>
+          {placeholderImages.noteScreenshots.map((image, index) => (
+            <CarouselItem key={index}>
+              <div className="p-1">
+                <Card>
+                  <CardContent className="flex aspect-[16/9] items-center justify-center p-0 overflow-hidden rounded-lg">
+                    <Image
+                      src={image.src}
+                      alt={image.alt}
+                      width={image.width}
+                      height={image.height}
+                      data-ai-hint={image['data-ai-hint']}
+                      className="object-cover w-full h-full"
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        <CarouselPrevious />
+        <CarouselNext />
+      </Carousel>
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
@@ -114,32 +138,6 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
                     ))}
                 </div>
             )}
-          <div className="mb-4">
-              <Carousel className="w-full">
-                <CarouselContent>
-                  {placeholderImages.noteScreenshots.map((image, index) => (
-                    <CarouselItem key={index}>
-                      <div className="p-1">
-                        <Card>
-                          <CardContent className="flex aspect-[16/9] items-center justify-center p-0 overflow-hidden rounded-lg">
-                            <Image
-                              src={image.src}
-                              alt={image.alt}
-                              width={image.width}
-                              height={image.height}
-                              data-ai-hint={image['data-ai-hint']}
-                              className="object-cover w-full h-full"
-                            />
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                <CarouselPrevious />
-                <CarouselNext />
-              </Carousel>
-          </div>
           <div className="prose dark:prose-invert max-w-none">
             <p style={{ whiteSpace: 'pre-line' }}>{note.content}</p>
           </div>

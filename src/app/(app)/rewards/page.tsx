@@ -1,7 +1,7 @@
 
 "use client"
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, orderBy, limit, doc, getDoc, collectionGroup, where, runTransaction, onSnapshot } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, limit, doc, onSnapshot, runTransaction } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { Award, Star, Trophy, Palette, CheckCircle } from "lucide-react";
@@ -14,8 +14,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError, type SecurityRuleContext } from "@/firebase/errors";
 
 interface UserData {
     id: string;
@@ -88,20 +86,9 @@ export default function RewardsPage() {
             if (!db) return;
             const usersCollection = collection(db, "users");
             const q = query(usersCollection, orderBy("points", "desc"), limit(10));
-            getDocs(q)
-              .then((querySnapshot) => {
-                const leaderboardData = querySnapshot.docs.map(
-                  (doc) => ({ id: doc.id, ...doc.data() } as UserData)
-                );
-                setLeaderboard(leaderboardData);
-              })
-              .catch(async (serverError) => {
-                const permissionError = new FirestorePermissionError({
-                  path: usersCollection.path,
-                  operation: "list",
-                } satisfies SecurityRuleContext);
-                errorEmitter.emit("permission-error", permissionError);
-            });
+            const querySnapshot = await getDocs(q);
+            const leaderboardData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserData));
+            setLeaderboard(leaderboardData);
         };
         fetchLeaderboard();
     }, []);

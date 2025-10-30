@@ -57,78 +57,74 @@ export default function RewardsPage() {
     const [displayedBadges, setDisplayedBadges] = useState<Badge[]>([]);
     const { toast } = useToast();
     
-    const fetchUserData = async () => {
-        if (!user || !db) return;
-
-        const userDocRef = doc(db, "users", user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists()) {
-            setCurrentUserData({ id: user.uid, ...userDocSnap.data() } as UserData);
-        }
-
-        const notesSnapshot = await getDocs(query(collection(db, "notes"), where("authorId", "==", user.uid)));
-        const userNotesCount = notesSnapshot.size;
-
-        const questionsSnapshot = await getDocs(query(collection(db, "questions"), where("authorId", "==", user.uid)));
-        const userQuestionsCount = questionsSnapshot.size;
-
-        const answersSnapshot = await getDocs(query(collectionGroup(db, 'answers'), where("authorId", "==", user.uid)));
-        const userAnswerCount = answersSnapshot.size;
-
-        const initialBadges: Omit<Badge, 'achieved' | 'progress'>[] = [
-            { name: "First Note", icon: Star, description: "Create your first note.", goal: 1 },
-            { name: "Question Starter", icon: Star, description: "Ask your first question.", goal: 1 },
-            { name: "Helping Hand", icon: Star, description: "Provide your first answer.", goal: 1 },
-            { name: "Note Taker Pro", icon: Trophy, description: "Create 10 notes.", goal: 10 },
-            { name: "Curious Mind", icon: Trophy, description: "Ask 10 questions.", goal: 10 },
-            { name: "Community Pillar", icon: Trophy, description: "Provide 10 answers.", goal: 10 },
-        ];
-
-        const calculatedBadges = initialBadges.map(b => {
-            let currentProgress = 0;
-            if (b.name.includes("Note")) currentProgress = userNotesCount;
-            if (b.name.includes("Question")) currentProgress = userQuestionsCount;
-            if (b.name.includes("Answer")) currentProgress = userAnswerCount;
-
-            return {
-                ...b,
-                progress: Math.min((currentProgress / b.goal) * 100, 100),
-                achieved: currentProgress >= b.goal,
-            }
-        })
-        setAllBadges(calculatedBadges);
-    };
-
-    const fetchLeaderboard = async () => {
-        if (!db) return;
-        try {
-            const usersCollection = collection(db, "users");
-            const q = query(usersCollection, orderBy("points", "desc"), limit(10));
-            const querySnapshot = await getDocs(q);
-            const leaderboardData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserData));
-            setLeaderboard(leaderboardData);
-        } catch (error) {
-            console.error("Error fetching leaderboard: ", error);
-        }
-    };
-    
     useEffect(() => {
-        const fetchAllData = async () => {
-            await fetchLeaderboard();
-            if (user) {
-                await fetchUserData();
+        const fetchUserData = async () => {
+            if (!user || !db) return;
+
+            const userDocRef = doc(db, "users", user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+                setCurrentUserData({ id: user.uid, ...userDocSnap.data() } as UserData);
             }
-        }
-        fetchAllData().catch(err => {
-            if ((err as any).code === 'permission-denied') {
-                toast({
-                    variant: "destructive",
-                    title: "Permissions Error",
-                    description: "Could not load leaderboard data due to permissions."
-                });
+
+            const notesSnapshot = await getDocs(query(collection(db, "notes"), where("authorId", "==", user.uid)));
+            const userNotesCount = notesSnapshot.size;
+
+            const questionsSnapshot = await getDocs(query(collection(db, "questions"), where("authorId", "==", user.uid)));
+            const userQuestionsCount = questionsSnapshot.size;
+
+            const answersSnapshot = await getDocs(query(collectionGroup(db, 'answers'), where("authorId", "==", user.uid)));
+            const userAnswerCount = answersSnapshot.size;
+
+            const initialBadges: Omit<Badge, 'achieved' | 'progress'>[] = [
+                { name: "First Note", icon: Star, description: "Create your first note.", goal: 1 },
+                { name: "Question Starter", icon: Star, description: "Ask your first question.", goal: 1 },
+                { name: "Helping Hand", icon: Star, description: "Provide your first answer.", goal: 1 },
+                { name: "Note Taker Pro", icon: Trophy, description: "Create 10 notes.", goal: 10 },
+                { name: "Curious Mind", icon: Trophy, description: "Ask 10 questions.", goal: 10 },
+                { name: "Community Pillar", icon: Trophy, description: "Provide 10 answers.", goal: 10 },
+            ];
+
+            const calculatedBadges = initialBadges.map(b => {
+                let currentProgress = 0;
+                if (b.name.includes("Note")) currentProgress = userNotesCount;
+                if (b.name.includes("Question")) currentProgress = userQuestionsCount;
+                if (b.name.includes("Answer")) currentProgress = userAnswerCount;
+
+                return {
+                    ...b,
+                    progress: Math.min((currentProgress / b.goal) * 100, 100),
+                    achieved: currentProgress >= b.goal,
+                }
+            })
+            setAllBadges(calculatedBadges);
+        };
+        
+        fetchUserData();
+    }, [user]);
+
+    useEffect(() => {
+        const fetchLeaderboard = async () => {
+            if (!db) return;
+            try {
+                const usersCollection = collection(db, "users");
+                const q = query(usersCollection, orderBy("points", "desc"), limit(10));
+                const querySnapshot = await getDocs(q);
+                const leaderboardData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserData));
+                setLeaderboard(leaderboardData);
+            } catch (error) {
+                console.error("Error fetching leaderboard: ", error);
+                 if ((error as any).code === 'permission-denied') {
+                    toast({
+                        variant: "destructive",
+                        title: "Permissions Error",
+                        description: "Could not load leaderboard data due to permissions."
+                    });
+                }
             }
-        });
-    }, [user, toast]);
+        };
+        fetchLeaderboard();
+    }, [toast]);
 
     useEffect(() => {
         if (allBadges.length > 0) {
@@ -162,7 +158,14 @@ export default function RewardsPage() {
             });
             
             toast({ title: 'Theme Unlocked!', description: `You can now use the ${theme.name} theme on your profile.` });
-            await fetchUserData(); // Re-fetch to update UI
+            
+            // Optimistically update local state
+            setCurrentUserData(prev => prev ? ({
+                ...prev,
+                points: prev.points - theme.cost,
+                unlockedThemes: [...(prev.unlockedThemes || []), theme.id],
+            }) : null);
+
         } catch (error) {
             console.error('Error unlocking theme:', error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not unlock theme.' });
@@ -177,7 +180,10 @@ export default function RewardsPage() {
                 transaction.update(userRef, { activeTheme: themeId });
             });
             toast({ title: 'Theme Applied!', description: 'Your profile has been updated.' });
-            await fetchUserData(); // Re-fetch to update UI
+            
+             // Optimistically update local state
+            setCurrentUserData(prev => prev ? ({ ...prev, activeTheme: themeId }) : null);
+
         } catch (error) {
             console.error('Error applying theme:', error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not apply theme.' });

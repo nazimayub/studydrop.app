@@ -53,7 +53,8 @@ export default function RewardsPage() {
     const [user] = auth ? useAuthState(auth) : [null];
     const [currentUserData, setCurrentUserData] = useState<UserData | null>(null);
     const [leaderboard, setLeaderboard] = useState<UserData[]>([]);
-    const [badges, setBadges] = useState<Badge[]>([]);
+    const [allBadges, setAllBadges] = useState<Badge[]>([]);
+    const [displayedBadges, setDisplayedBadges] = useState<Badge[]>([]);
     const { toast } = useToast();
     
     const fetchUserData = async () => {
@@ -95,7 +96,7 @@ export default function RewardsPage() {
                 achieved: currentProgress >= b.goal,
             }
         })
-        setBadges(calculatedBadges);
+        setAllBadges(calculatedBadges);
     };
 
     const fetchLeaderboard = async () => {
@@ -128,6 +129,14 @@ export default function RewardsPage() {
             }
         });
     }, [user, toast]);
+
+    useEffect(() => {
+        if (allBadges.length > 0) {
+            const shuffled = [...allBadges].sort(() => 0.5 - Math.random());
+            const numToShow = Math.floor(Math.random() * 4) + 2; // 2 to 5
+            setDisplayedBadges(shuffled.slice(0, numToShow));
+        }
+    }, [allBadges]);
 
     const handleUnlockTheme = async (theme: Theme) => {
         if (!user || !currentUserData || !db) return;
@@ -198,7 +207,7 @@ export default function RewardsPage() {
             </TabsList>
             <TabsContent value="badges">
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {badges.map(badge => (
+                    {displayedBadges.map(badge => (
                         <Card key={badge.name} className={cn("transition-all", badge.achieved ? 'border-primary/80 shadow-lg' : 'border-dashed')}>
                            <CardHeader className={cn("relative", badge.achieved && "bg-gradient-to-br from-primary/10 to-accent/10")}>
                                 {badge.achieved && (
@@ -317,3 +326,5 @@ export default function RewardsPage() {
     </div>
   )
 }
+
+    

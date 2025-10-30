@@ -69,7 +69,7 @@ export default function LandingPage() {
               />
               <div className="space-y-2">
                 <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none font-headline">
-                  Never Fall Behind in Class Again
+                  Built for students, by students.
                 </h1>
                 <p className="max-w-[600px] text-muted-foreground md:text-xl mx-auto">
                   Open Desk helps you connect with classmates, share notes, and master your courses together. Stay on top of your classes, effortlessly.
@@ -178,7 +178,7 @@ export default function LandingPage() {
               </Card>
               <Card>
                 <CardContent className="pt-6">
-                  <p className="mb-4">"The AI study guide creator is a lifesaver for finals. It breaks down huge topics into manageable chunks."</p>
+                  <p className="mb-4">"The AI study guide creator is great for finals. It breaks down huge topics into manageable chunks."</p>
                   <div className="flex items-center gap-4">
                     <div>
                       <p className="font-semibold">College Freshman</p>

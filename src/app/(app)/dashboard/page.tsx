@@ -83,21 +83,17 @@ export default function Dashboard() {
     
     const userDocRef = doc(db, "users", user.uid);
 
-    const unsubscribes: (() => void)[] = [];
-
-    // Real-time listener for user data (points, classes, name)
+    // Real-time listener for user data (classes and name)
     const userUnsub = onSnapshot(userDocRef, (docSnap) => {
         if (docSnap.exists()) {
             const userData = docSnap.data();
-            setStats(prev => ({ ...prev, points: userData.points || 0 }));
             const userEnrolledClasses = userData.enrolledClasses || [];
             setEnrolledClasses(userEnrolledClasses);
             setUserName(userData.firstName || user.displayName?.split(' ')[0] || 'User');
             fetchFilteredActivity(userEnrolledClasses);
         }
     });
-    unsubscribes.push(userUnsub);
-
+    
     const toDate = (firebaseDate: any): Date => {
         if (!firebaseDate) return new Date();
         if (firebaseDate.toDate) return firebaseDate.toDate();
@@ -148,23 +144,7 @@ export default function Dashboard() {
         setRecentActivity(combinedActivity);
     };
 
-    // Real-time listeners for stats
-    const notesQuery = query(collection(db, "notes"), where("authorId", "==", user.uid));
-    unsubscribes.push(onSnapshot(notesQuery, (snapshot) => {
-        setStats(prev => ({ ...prev, notes: snapshot.size }));
-    }));
-
-    const questionsQuery = query(collection(db, "questions"), where("authorId", "==", user.uid));
-    unsubscribes.push(onSnapshot(questionsQuery, (snapshot) => {
-        setStats(prev => ({ ...prev, questions: snapshot.size }));
-    }));
-    
-    const answersQuery = query(collectionGroup(db, 'answers'), where("authorId", "==", user.uid));
-    unsubscribes.push(onSnapshot(answersQuery, (snapshot) => {
-        setStats(prev => ({ ...prev, answers: snapshot.size }));
-    }));
-
-    return () => unsubscribes.forEach(unsub => unsub());
+    return () => userUnsub();
     
   }, [user]);
 

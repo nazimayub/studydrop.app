@@ -108,12 +108,11 @@ export default function NoteDetailPage({ params }: { params: { id: string } }) {
                 </div>
             )}
           <div className="mb-4">
-              <a href="/AMSTuD Foreign and Domestic Policy of Period 4.pdf" target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline">
-                      <Paperclip className="mr-2 h-4 w-4" />
-                      AMSTuD Foreign and Domestic Policy of Period 4.pdf
-                  </Button>
-              </a>
+              <iframe
+                src="/AMSTuD Foreign and Domestic Policy of Period 4.pdf"
+                className="w-full h-[600px] border rounded-md"
+                title="AMSTuD Foreign and Domestic Policy of Period 4.pdf"
+              ></iframe>
           </div>
           <div className="prose dark:prose-invert max-w-none">
             <p style={{ whiteSpace: 'pre-line' }}>{note.content}</p>

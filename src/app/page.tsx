@@ -176,6 +176,26 @@ export default function LandingPage() {
                   </div>
                 </CardContent>
               </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="mb-4">"The AI study guide creator is a lifesaver for finals. It breaks down huge topics into manageable chunks."</p>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="font-semibold">College Freshman</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="mb-4">"Getting help on the Q&A forum is way faster than waiting for office hours. I got an answer to my calculus problem in like 20 minutes."</p>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="font-semibold">High School Junior</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </section>

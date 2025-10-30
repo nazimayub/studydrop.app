@@ -177,7 +177,7 @@ export default function RewardsPage() {
             </TabsList>
             <TabsContent value="badges">
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {displayedBadges.map(badge => (
+                    {displayedBadges.length > 0 ? displayedBadges.map(badge => (
                         <Card key={badge.name} className={cn("transition-all", badge.achieved ? 'border-primary/80 shadow-lg' : 'border-dashed')}>
                            <CardHeader className={cn("relative", badge.achieved && "bg-gradient-to-br from-primary/10 to-accent/10")}>
                                 {badge.achieved && (
@@ -201,6 +201,18 @@ export default function RewardsPage() {
                                      <p className="text-xs text-muted-foreground mt-1 text-center">{Math.round(badge.progress)}% complete</p>
                                 </CardContent>
                             )}
+                        </Card>
+                    )) : Array.from({ length: 4 }).map((_, i) => (
+                        <Card key={i} className="border-dashed">
+                            <CardHeader>
+                                <div className="flex items-center gap-4">
+                                    <div className="h-12 w-12 rounded-lg bg-muted"></div>
+                                    <div className="space-y-2">
+                                        <div className="h-4 w-24 rounded bg-muted"></div>
+                                        <div className="h-3 w-32 rounded bg-muted"></div>
+                                    </div>
+                                </div>
+                            </CardHeader>
                         </Card>
                     ))}
                 </div>
@@ -296,3 +308,5 @@ export default function RewardsPage() {
     </div>
   )
 }
+
+    

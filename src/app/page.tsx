@@ -196,6 +196,46 @@ export default function LandingPage() {
                   </div>
                 </CardContent>
               </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="mb-4">"I upload my lecture slides, and the AI helps me create summaries and flashcards. It's saved me hours of work."</p>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="font-semibold">College Sophomore</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="mb-4">"The points and rewards system is surprisingly motivating. It makes studying feel like less of a chore."</p>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="font-semibold">High School Senior</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+               <Card>
+                <CardContent className="pt-6">
+                  <p className="mb-4">"Being able to see notes from other students in my class is a game-changer. It helps me fill in gaps in my own notes."</p>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="font-semibold">University Student</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+               <Card>
+                <CardContent className="pt-6">
+                  <p className="mb-4">"The catch-up feed is perfect. I just log in and see exactly what's new in my classes without having to ask around."</p>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="font-semibold">College Junior</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </section>

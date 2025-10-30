@@ -51,60 +51,38 @@ const THEMES: Theme[] = [
     { id: 'ocean', name: 'Ocean', cost: 200, className: 'theme-ocean', description: 'A cool theme with deep blue colors.' },
 ];
 
+const ALL_BADGES: Badge[] = [
+    { name: "First Note", icon: Star, description: "Create your first note.", goal: 1, achieved: true, progress: 100 },
+    { name: "Question Starter", icon: Star, description: "Ask your first question.", goal: 1, achieved: true, progress: 100 },
+    { name: "Helping Hand", icon: Star, description: "Provide your first answer.", goal: 1, achieved: false, progress: 0 },
+    { name: "Note Taker Pro", icon: Trophy, description: "Create 10 notes.", goal: 10, achieved: true, progress: 100 },
+    { name: "Curious Mind", icon: Trophy, description: "Ask 10 questions.", goal: 10, achieved: false, progress: 50 },
+    { name: "Community Pillar", icon: Trophy, description: "Provide 10 answers.", goal: 10, achieved: false, progress: 20 },
+    { name: "Point Collector", icon: Award, description: "Earn 100 points.", goal: 100, achieved: true, progress: 100 },
+    { name: "Streak Starter", icon: Star, description: "Contribute 3 days in a row.", goal: 3, achieved: false, progress: 66 },
+];
+
+
 export default function RewardsPage() {
     const [user] = auth ? useAuthState(auth) : [null];
     const [currentUserData, setCurrentUserData] = useState<UserData | null>(null);
     const [leaderboard, setLeaderboard] = useState<UserData[]>([]);
-    const [allBadges, setAllBadges] = useState<Badge[]>([]);
     const [displayedBadges, setDisplayedBadges] = useState<Badge[]>([]);
     const { toast } = useToast();
     const [isClient, setIsClient] = useState(false);
     
     useEffect(() => {
         setIsClient(true);
-        const fetchUserData = async () => {
-            if (!user || !db) return;
+        if (!user || !db) return;
 
-            const userDocRef = doc(db, "users", user.uid);
-            const userDocSnap = await getDoc(userDocRef);
-            if (userDocSnap.exists()) {
-                setCurrentUserData({ id: user.uid, ...userDocSnap.data() } as UserData);
+        const userDocRef = doc(db, "users", user.uid);
+        const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setCurrentUserData({ id: user.uid, ...docSnap.data() } as UserData);
             }
-
-            const notesSnapshot = await getDocs(query(collection(db, "notes"), where("authorId", "==", user.uid)));
-            const userNotesCount = notesSnapshot.size;
-
-            const questionsSnapshot = await getDocs(query(collection(db, "questions"), where("authorId", "==", user.uid)));
-            const userQuestionsCount = questionsSnapshot.size;
-
-            const answersSnapshot = await getDocs(query(collectionGroup(db, 'answers'), where("authorId", "==", user.uid)));
-            const userAnswerCount = answersSnapshot.size;
-
-            const initialBadges: Omit<Badge, 'achieved' | 'progress'>[] = [
-                { name: "First Note", icon: Star, description: "Create your first note.", goal: 1 },
-                { name: "Question Starter", icon: Star, description: "Ask your first question.", goal: 1 },
-                { name: "Helping Hand", icon: Star, description: "Provide your first answer.", goal: 1 },
-                { name: "Note Taker Pro", icon: Trophy, description: "Create 10 notes.", goal: 10 },
-                { name: "Curious Mind", icon: Trophy, description: "Ask 10 questions.", goal: 10 },
-                { name: "Community Pillar", icon: Trophy, description: "Provide 10 answers.", goal: 10 },
-            ];
-
-            const calculatedBadges = initialBadges.map(b => {
-                let currentProgress = 0;
-                if (b.name.includes("Note")) currentProgress = userNotesCount;
-                if (b.name.includes("Question")) currentProgress = userQuestionsCount;
-                if (b.name.includes("Answer")) currentProgress = userAnswerCount;
-
-                return {
-                    ...b,
-                    progress: Math.min((currentProgress / b.goal) * 100, 100),
-                    achieved: currentProgress >= b.goal,
-                }
-            })
-            setAllBadges(calculatedBadges);
-        };
+        });
         
-        fetchUserData();
+        return () => unsubscribe();
     }, [user]);
 
     useEffect(() => {
@@ -131,12 +109,11 @@ export default function RewardsPage() {
     }, []);
 
     useEffect(() => {
-        if (isClient && allBadges.length > 0) {
-            const numToShow = Math.floor(Math.random() * 4) + 2; // 2 to 5
-            const shuffled = [...allBadges].sort(() => 0.5 - Math.random());
-            setDisplayedBadges(shuffled.slice(0, numToShow));
+        if (isClient) {
+            const shuffled = [...ALL_BADGES].sort(() => 0.5 - Math.random());
+            setDisplayedBadges(shuffled.slice(0, 4));
         }
-    }, [isClient, allBadges]);
+    }, [isClient]);
 
     const handleUnlockTheme = async (theme: Theme) => {
         if (!user || !currentUserData || !db) return;

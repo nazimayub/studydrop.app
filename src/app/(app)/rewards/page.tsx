@@ -14,6 +14,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError, type SecurityRuleContext } from "@/firebase/errors";
 
 interface UserData {
     id: string;
@@ -56,8 +58,10 @@ export default function RewardsPage() {
     const [allBadges, setAllBadges] = useState<Badge[]>([]);
     const [displayedBadges, setDisplayedBadges] = useState<Badge[]>([]);
     const { toast } = useToast();
+    const [isClient, setIsClient] = useState(false);
     
     useEffect(() => {
+        setIsClient(true);
         const fetchUserData = async () => {
             if (!user || !db) return;
 
@@ -106,33 +110,33 @@ export default function RewardsPage() {
     useEffect(() => {
         const fetchLeaderboard = async () => {
             if (!db) return;
-            try {
-                const usersCollection = collection(db, "users");
-                const q = query(usersCollection, orderBy("points", "desc"), limit(10));
-                const querySnapshot = await getDocs(q);
-                const leaderboardData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserData));
+            const usersCollection = collection(db, "users");
+            const q = query(usersCollection, orderBy("points", "desc"), limit(10));
+            getDocs(q)
+              .then((querySnapshot) => {
+                const leaderboardData = querySnapshot.docs.map(
+                  (doc) => ({ id: doc.id, ...doc.data() } as UserData)
+                );
                 setLeaderboard(leaderboardData);
-            } catch (error) {
-                console.error("Error fetching leaderboard: ", error);
-                 if ((error as any).code === 'permission-denied') {
-                    toast({
-                        variant: "destructive",
-                        title: "Permissions Error",
-                        description: "Could not load leaderboard data due to permissions."
-                    });
-                }
-            }
+              })
+              .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                  path: usersCollection.path,
+                  operation: "list",
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit("permission-error", permissionError);
+            });
         };
         fetchLeaderboard();
-    }, [toast]);
+    }, []);
 
     useEffect(() => {
-        if (allBadges.length > 0) {
-            const shuffled = [...allBadges].sort(() => 0.5 - Math.random());
+        if (isClient && allBadges.length > 0) {
             const numToShow = Math.floor(Math.random() * 4) + 2; // 2 to 5
+            const shuffled = [...allBadges].sort(() => 0.5 - Math.random());
             setDisplayedBadges(shuffled.slice(0, numToShow));
         }
-    }, [allBadges]);
+    }, [isClient, allBadges]);
 
     const handleUnlockTheme = async (theme: Theme) => {
         if (!user || !currentUserData || !db) return;

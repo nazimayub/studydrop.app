@@ -17,37 +17,44 @@
   ],
   "noteScreenshots": [
     {
-      "src": "https://picsum.photos/seed/screenshot1/1280/720",
-      "alt": "Screenshot of notes about foreign policy.",
+      "src": "/Screenshot 2025-10-30 003920.png",
+      "alt": "Screenshot of a document dated 2025-10-30.",
       "data-ai-hint": "document screenshot",
       "width": 1280,
       "height": 720
     },
     {
-      "src": "https://picsum.photos/seed/screenshot2/1280/720",
-      "alt": "Screenshot of a historical map related to domestic policy.",
-      "data-ai-hint": "map screenshot",
+      "src": "/Screenshot 2025-10-30 003938.png",
+      "alt": "Screenshot of a document dated 2025-10-30.",
+      "data-ai-hint": "document screenshot",
       "width": 1280,
       "height": 720
     },
     {
-      "src": "https://picsum.photos/seed/screenshot3/1280/720",
-      "alt": "Screenshot of a chart showing policy impacts.",
-      "data-ai-hint": "chart graph",
+      "src": "/Screenshot 2025-10-30 003951.png",
+      "alt": "Screenshot of a document dated 2025-10-30.",
+      "data-ai-hint": "document screenshot",
       "width": 1280,
       "height": 720
     },
     {
-      "src": "https://picsum.photos/seed/screenshot4/1280/720",
-      "alt": "Screenshot of a timeline of policy events.",
-      "data-ai-hint": "timeline infographic",
+      "src": "/Screenshot 2025-10-30 004001.png",
+      "alt": "Screenshot of a document dated 2025-10-30.",
+      "data-ai-hint": "document screenshot",
       "width": 1280,
       "height": 720
     },
     {
-      "src": "https://picsum.photos/seed/screenshot5/1280/720",
-      "alt": "Screenshot of a presentation slide on policy.",
-      "data-ai-hint": "presentation slide",
+      "src": "/Screenshot 2025-10-30 004016.png",
+      "alt": "Screenshot of a document dated 2025-10-30.",
+      "data-ai-hint": "document screenshot",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "src": "/Screenshot 2025-10-30 004035.png",
+      "alt": "Screenshot of a document dated 2025-10-30.",
+      "data-ai-hint": "document screenshot",
       "width": 1280,
       "height": 720
     }

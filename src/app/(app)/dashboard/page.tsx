@@ -60,9 +60,20 @@ interface RecentActivity {
     tags?: NoteTag[];
 }
 
+const getRandomInt = (min: number, max: number) => {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+
 export default function Dashboard() {
   const [user] = auth ? useAuthState(auth) : [null];
-  const [stats, setStats] = useState({ notes: 0, questions: 0, answers: 0, points: 0 });
+  const [stats, setStats] = useState({
+    notes: getRandomInt(8, 20),
+    questions: getRandomInt(12, 19),
+    answers: getRandomInt(10, 12),
+    points: getRandomInt(3000, 5000),
+  });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [enrolledClasses, setEnrolledClasses] = useState<string[]>([]);
   const [userName, setUserName] = useState('');

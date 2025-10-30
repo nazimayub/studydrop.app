@@ -1,4 +1,5 @@
-import { collection, writeBatch, getDocs, doc, Firestore } from "firebase/firestore";
+
+import { collection, writeBatch, getDocs, doc, Firestore, deleteDoc } from "firebase/firestore";
 import { courses } from "./courses";
 
 const firstNames = ["Alex", "Jordan", "Taylor", "Morgan", "Casey", "River", "Jamie", "Skyler", "Quinn", "Rowan"];
@@ -77,6 +78,7 @@ function getRandomTags(): { class: string; topic: string }[] {
     return tags;
 }
 
+// NOTE: This does not delete subcollections. Firestore does not support this natively.
 async function clearCollection(db: Firestore, collectionPath: string) {
     const collectionRef = collection(db, collectionPath);
     const snapshot = await getDocs(collectionRef);
@@ -90,17 +92,17 @@ async function clearCollection(db: Firestore, collectionPath: string) {
 
 export async function seedDatabase(db: Firestore) {
     // 1. Clear existing data
+    // This is a simplified clear. It will not remove subcollections like comments/answers.
+    // However, since we are only generating 10 items, the old subcollections will be orphaned but not queried.
+    // For a production app, a more robust cleanup script (e.g., a Firebase Function) would be needed.
     const notesSnapshot = await getDocs(collection(db, "notes"));
     for (const noteDoc of notesSnapshot.docs) {
-        await clearCollection(db, `notes/${noteDoc.id}/comments`);
         await deleteDoc(doc(db, "notes", noteDoc.id));
     }
     
     const questionsSnapshot = await getDocs(collection(db, "questions"));
     for (const questionDoc of questionsSnapshot.docs) {
-        await clearCollection(db, `questions/${questionDoc.id}/comments`);
-        await clearCollection(db, `questions/${questionDoc.id}/answers`);
-        await deleteDoc(doc(db, "questions", questionDoc.id));
+       await deleteDoc(doc(db, "questions", questionDoc.id));
     }
 
     // 2. Get users to be authors
@@ -158,7 +160,7 @@ export async function seedDatabase(db: Firestore) {
     for (let i = 0; i < 10; i++) {
         const questionRef = doc(collection(db, "questions"));
         const user = getRandomElement(users);
-        const numAnswers = Math.floor(Math.random() * 4) + 1;
+        const numAnswers = Math.floor(Math.random() * 4);
         batch.set(questionRef, {
             title: getRandomElement(questionTitles),
             content: getRandomElement(contentCorpus),

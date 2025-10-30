@@ -69,10 +69,8 @@ export default function RewardsPage() {
     const [leaderboard, setLeaderboard] = useState<UserData[]>([]);
     const [displayedBadges, setDisplayedBadges] = useState<Badge[]>([]);
     const { toast } = useToast();
-    const [isClient, setIsClient] = useState(false);
     
     useEffect(() => {
-        setIsClient(true);
         if (!user || !db) return;
 
         const userDocRef = doc(db, "users", user.uid);
@@ -109,11 +107,9 @@ export default function RewardsPage() {
     }, []);
 
     useEffect(() => {
-        if (isClient) {
-            const shuffled = [...ALL_BADGES].sort(() => 0.5 - Math.random());
-            setDisplayedBadges(shuffled.slice(0, 4));
-        }
-    }, [isClient]);
+        const shuffled = [...ALL_BADGES].sort(() => 0.5 - Math.random());
+        setDisplayedBadges(shuffled.slice(0, 4));
+    }, []);
 
     const handleUnlockTheme = async (theme: Theme) => {
         if (!user || !currentUserData || !db) return;
@@ -313,5 +309,3 @@ export default function RewardsPage() {
     </div>
   )
 }
-
-    

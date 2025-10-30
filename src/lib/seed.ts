@@ -1,4 +1,3 @@
-
 import { collection, writeBatch, getDocs, doc, Firestore } from "firebase/firestore";
 import { courses } from "./courses";
 
@@ -78,60 +77,52 @@ function getRandomTags(): { class: string; topic: string }[] {
     return tags;
 }
 
-async function clearCollection(db: Firestore, collectionPath: string, batch: any) {
+async function clearCollection(db: Firestore, collectionPath: string) {
     const collectionRef = collection(db, collectionPath);
     const snapshot = await getDocs(collectionRef);
+    const batch = writeBatch(db);
     snapshot.docs.forEach(doc => {
         batch.delete(doc.ref);
     });
+    await batch.commit();
 }
 
+
 export async function seedDatabase(db: Firestore) {
-    const notesCollection = collection(db, "notes");
-    const questionsCollection = collection(db, "questions");
-
-    const deleteBatch = writeBatch(db);
-    
-    // Clear existing notes and their comments
-    const existingNotes = await getDocs(notesCollection);
-    for (const noteDoc of existingNotes.docs) {
-        await clearCollection(db, `notes/${noteDoc.id}/comments`, deleteBatch);
-        deleteBatch.delete(noteDoc.ref);
-    }
-
-    // Clear existing questions and their comments/answers
-    const existingQuestions = await getDocs(questionsCollection);
-    for (const questionDoc of existingQuestions.docs) {
-        await clearCollection(db, `questions/${questionDoc.id}/comments`, deleteBatch);
-        await clearCollection(db, `questions/${questionDoc.id}/answers`, deleteBatch);
-        deleteBatch.delete(questionDoc.ref);
+    // 1. Clear existing data
+    const notesSnapshot = await getDocs(collection(db, "notes"));
+    for (const noteDoc of notesSnapshot.docs) {
+        await clearCollection(db, `notes/${noteDoc.id}/comments`);
+        await deleteDoc(doc(db, "notes", noteDoc.id));
     }
     
-    await deleteBatch.commit();
-    
-    // Create new data
-    const addBatch = writeBatch(db);
+    const questionsSnapshot = await getDocs(collection(db, "questions"));
+    for (const questionDoc of questionsSnapshot.docs) {
+        await clearCollection(db, `questions/${questionDoc.id}/comments`);
+        await clearCollection(db, `questions/${questionDoc.id}/answers`);
+        await deleteDoc(doc(db, "questions", questionDoc.id));
+    }
 
+    // 2. Get users to be authors
     const usersSnapshot = await getDocs(collection(db, "users"));
     if (usersSnapshot.empty) {
         throw new Error("No users found in the database. Please create a user first.");
     }
-     const userIds = usersSnapshot.docs.map(d => ({
+    const users = usersSnapshot.docs.map(d => ({
         id: d.id,
         name: `${d.data().firstName} ${d.data().lastName}`,
         avatar: d.data().photoURL,
         fallback: `${d.data().firstName?.charAt(0) || ''}${d.data().lastName?.charAt(0) || ''}`
     }));
-    
-    const createdNotes: { id: string }[] = [];
-    const createdQuestions: { id: string }[] = [];
+
+    // 3. Generate new data in a batch
+    const batch = writeBatch(db);
 
     // Generate 10 Notes
     for (let i = 0; i < 10; i++) {
-        const noteRef = doc(notesCollection);
-        createdNotes.push({ id: noteRef.id });
-        const user = getRandomElement(userIds);
-        addBatch.set(noteRef, {
+        const noteRef = doc(collection(db, "notes"));
+        const user = getRandomElement(users);
+        batch.set(noteRef, {
             title: getRandomElement(noteTitles),
             content: getRandomElement(contentCorpus),
             tags: getRandomTags(),
@@ -144,42 +135,13 @@ export async function seedDatabase(db: Firestore) {
             attachmentURL: "",
             attachmentName: "",
         });
-    }
 
-    // Generate 10 Questions
-    for (let i = 0; i < 10; i++) {
-        const questionRef = doc(questionsCollection);
-        createdQuestions.push({ id: questionRef.id });
-        const user = getRandomElement(userIds);
-        addBatch.set(questionRef, {
-            title: getRandomElement(questionTitles),
-            content: getRandomElement(contentCorpus),
-            tags: getRandomTags(),
-            authorId: user.id,
-            author: user.name,
-            avatar: user.avatar,
-            fallback: user.fallback,
-            date: getRandomDate(),
-            views: Math.floor(Math.random() * 200),
-            replies: 0, // Will be updated by answers
-            upvotes: Math.floor(Math.random() * 30),
-            downvotes: Math.floor(Math.random() * 5),
-            attachmentURL: "",
-            attachmentName: "",
-        });
-    }
-    
-    await addBatch.commit();
-    
-    // Create comments and answers
-    const secondaryBatch = writeBatch(db);
-
-    const generateSubCollectionItems = (contentId: string, parentCollection: 'notes' | 'questions') => {
-        const numComments = Math.floor(Math.random() * 3); // 0 to 2 comments
+        // Add comments to note
+        const numComments = Math.floor(Math.random() * 3);
         for (let j = 0; j < numComments; j++) {
-            const commentUser = getRandomElement(userIds);
-            const commentRef = doc(collection(db, parentCollection, contentId, "comments"));
-            secondaryBatch.set(commentRef, {
+            const commentUser = getRandomElement(users);
+            const commentRef = doc(collection(db, "notes", noteRef.id, "comments"));
+            batch.set(commentRef, {
                 authorId: commentUser.id,
                 authorName: commentUser.name,
                 authorAvatar: commentUser.avatar,
@@ -190,31 +152,48 @@ export async function seedDatabase(db: Firestore) {
                 downvotes: Math.floor(Math.random() * 2),
             });
         }
+    }
 
-        if (parentCollection === 'questions') {
-            const numAnswers = Math.floor(Math.random() * 4) + 1; // 1 to 4 answers
-            for (let k = 0; k < numAnswers; k++) {
-                const answerUser = getRandomElement(userIds);
-                const answerRef = doc(collection(db, 'questions', contentId, "answers"));
-                secondaryBatch.set(answerRef, {
-                    author: answerUser.name,
-                    authorId: answerUser.id,
-                    avatar: answerUser.avatar,
-                    fallback: answerUser.fallback,
-                    content: getRandomElement(contentCorpus),
-                    date: getRandomDate(),
-                    upvotes: Math.floor(Math.random() * 15),
-                    downvotes: Math.floor(Math.random() * 3),
-                    isAccepted: false,
-                });
-            }
-             const questionRef = doc(db, 'questions', contentId);
-             secondaryBatch.update(questionRef, { replies: numAnswers });
+    // Generate 10 Questions
+    for (let i = 0; i < 10; i++) {
+        const questionRef = doc(collection(db, "questions"));
+        const user = getRandomElement(users);
+        const numAnswers = Math.floor(Math.random() * 4) + 1;
+        batch.set(questionRef, {
+            title: getRandomElement(questionTitles),
+            content: getRandomElement(contentCorpus),
+            tags: getRandomTags(),
+            authorId: user.id,
+            author: user.name,
+            avatar: user.avatar,
+            fallback: user.fallback,
+            date: getRandomDate(),
+            views: Math.floor(Math.random() * 200),
+            replies: numAnswers,
+            upvotes: Math.floor(Math.random() * 30),
+            downvotes: Math.floor(Math.random() * 5),
+            attachmentURL: "",
+            attachmentName: "",
+        });
+
+        // Add answers to question
+        for (let k = 0; k < numAnswers; k++) {
+            const answerUser = getRandomElement(users);
+            const answerRef = doc(collection(db, 'questions', questionRef.id, "answers"));
+            batch.set(answerRef, {
+                author: answerUser.name,
+                authorId: answerUser.id,
+                avatar: answerUser.avatar,
+                fallback: answerUser.fallback,
+                content: getRandomElement(contentCorpus),
+                date: getRandomDate(),
+                upvotes: Math.floor(Math.random() * 15),
+                downvotes: Math.floor(Math.random() * 3),
+                isAccepted: false,
+            });
         }
-    };
+    }
     
-    createdNotes.forEach(note => generateSubCollectionItems(note.id, 'notes'));
-    createdQuestions.forEach(question => generateSubCollectionItems(question.id, 'questions'));
-
-    await secondaryBatch.commit();
+    // 4. Commit the batch
+    await batch.commit();
 }

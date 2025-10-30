@@ -6,7 +6,7 @@ const firstNames = ["Alex", "Jordan", "Taylor", "Morgan", "Casey", "River", "Jam
 const lastNames = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez"];
 const noteTitles = [
     "Key Concepts of Cellular Respiration", "Summary of the French Revolution", "Introduction to Python Data Types",
-    "Analysis of 'The Great Gatsby'", "Principles of Macroeconomics: Supply and Demand", "Solving Linear Equations",
+    "Analysis of 'The Great Gatsby'", "Principles of Macroeconomics: Supply and Demand", "APUSH Unit 4 Sources Review",
     "The Structure of an Atom", "Understanding Shakespearean Sonnets", "Causes of World War I",
     "Foundations of Human Psychology", "Java vs. Python: A Comparison", "The Basics of Photosynthesis",
     "Exploring the Roman Empire", "Key Themes in '1984'", "Newton's Laws of Motion Explained",
@@ -34,7 +34,8 @@ const contentCorpus = [
     "Just a quick question about the reading. On page 52, the author says... but I thought the lecture said the opposite. Which one is correct?",
     "This is a very high-level overview of the chapter. I'd recommend reading the full chapter, but this is good for a quick review.",
     "I found a really helpful YouTube video that explains this topic well. Here's the link: [link]",
-    "Here are my thoughts on the discussion question. What do you all think? Am I on the right track?"
+    "Here are my thoughts on the discussion question. What do you all think? Am I on the right track?",
+    "Review of primary and secondary sources for AP US History Unit 4, covering the period from 1800-1848. Key documents include Jefferson's letters and excerpts from the Monroe Doctrine."
 ];
 
 const commentCorpus = [

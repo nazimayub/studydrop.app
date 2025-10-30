@@ -1,5 +1,5 @@
 
-import { collection, writeBatch, getDocs, doc, Firestore, deleteDoc } from "firebase/firestore";
+import { collection, writeBatch, getDocs, doc, Firestore, deleteDoc, query } from "firebase/firestore";
 import { courses } from "./courses";
 
 const firstNames = ["Alex", "Jordan", "Taylor", "Morgan", "Casey", "River", "Jamie", "Skyler", "Quinn", "Rowan"];
@@ -81,7 +81,13 @@ function getRandomTags(): { class: string; topic: string }[] {
 // NOTE: This does not delete subcollections. Firestore does not support this natively.
 async function clearCollection(db: Firestore, collectionPath: string) {
     const collectionRef = collection(db, collectionPath);
-    const snapshot = await getDocs(collectionRef);
+    const q = query(collectionRef);
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+        return;
+    }
+    
     const batch = writeBatch(db);
     snapshot.docs.forEach(doc => {
         batch.delete(doc.ref);
@@ -91,18 +97,18 @@ async function clearCollection(db: Firestore, collectionPath: string) {
 
 
 export async function seedDatabase(db: Firestore) {
-    // 1. Clear existing data
-    // This is a simplified clear. It will not remove subcollections like comments/answers.
-    // However, since we are only generating 10 items, the old subcollections will be orphaned but not queried.
-    // For a production app, a more robust cleanup script (e.g., a Firebase Function) would be needed.
+    // 1. Clear existing data, including subcollections
     const notesSnapshot = await getDocs(collection(db, "notes"));
     for (const noteDoc of notesSnapshot.docs) {
+        await clearCollection(db, `notes/${noteDoc.id}/comments`);
         await deleteDoc(doc(db, "notes", noteDoc.id));
     }
     
     const questionsSnapshot = await getDocs(collection(db, "questions"));
     for (const questionDoc of questionsSnapshot.docs) {
-       await deleteDoc(doc(db, "questions", questionDoc.id));
+        await clearCollection(db, `questions/${questionDoc.id}/answers`);
+        await clearCollection(db, `questions/${questionDoc.id}/comments`);
+        await deleteDoc(doc(db, "questions", questionDoc.id));
     }
 
     // 2. Get users to be authors
@@ -120,8 +126,8 @@ export async function seedDatabase(db: Firestore) {
     // 3. Generate new data in a batch
     const batch = writeBatch(db);
 
-    // Generate 10 Notes
-    for (let i = 0; i < 10; i++) {
+    // Generate 20 Notes
+    for (let i = 0; i < 20; i++) {
         const noteRef = doc(collection(db, "notes"));
         const user = getRandomElement(users);
         batch.set(noteRef, {
@@ -156,8 +162,8 @@ export async function seedDatabase(db: Firestore) {
         }
     }
 
-    // Generate 10 Questions
-    for (let i = 0; i < 10; i++) {
+    // Generate 20 Questions
+    for (let i = 0; i < 20; i++) {
         const questionRef = doc(collection(db, "questions"));
         const user = getRandomElement(users);
         const numAnswers = Math.floor(Math.random() * 4);
@@ -199,3 +205,5 @@ export async function seedDatabase(db: Firestore) {
     // 4. Commit the batch
     await batch.commit();
 }
+
+    

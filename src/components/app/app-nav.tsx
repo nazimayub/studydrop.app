@@ -9,7 +9,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { Home, NotebookText, MessageSquare, Award, Activity, BrainCircuit } from "lucide-react"
+import { Home, NotebookText, MessageSquare, Award, Activity, BrainCircuit, BookCopy } from "lucide-react"
 
 const navItems = [
     { href: "/dashboard", icon: Home, label: "Dashboard" },
@@ -18,6 +18,7 @@ const navItems = [
     { href: "/forum", icon: MessageSquare, label: "Q&A Forum" },
     { href: "/rewards", icon: Award, label: "Rewards" },
     { href: "/ai-assistant", icon: BrainCircuit, label: "AI Assistant" },
+    { href: "/study-guide", icon: BookCopy, label: "Study Guide" },
 ]
 
 export function AppNav({ isMobile = false }: { isMobile?: boolean }) {

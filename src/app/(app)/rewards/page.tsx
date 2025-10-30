@@ -1,7 +1,7 @@
 
 "use client"
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, orderBy, limit, doc, getDoc, collectionGroup, where, runTransaction } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, limit, doc, getDoc, collectionGroup, where, runTransaction, onSnapshot } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { Award, Star, Trophy, Palette, CheckCircle } from "lucide-react";
@@ -313,3 +313,5 @@ export default function RewardsPage() {
     </div>
   )
 }
+
+    

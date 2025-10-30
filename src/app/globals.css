@@ -109,9 +109,9 @@
 @layer utilities {
   .animated-gradient {
     background-size: 300%;
-    -webkit-animation: animatedgradient 6s ease infinite alternate;
-    -moz-animation: animatedgradient 6s ease infinite alternate;
-    animation: animatedgradient 6s ease infinite alternate;
+    -webkit-animation: animatedgradient 3s ease infinite alternate;
+    -moz-animation: animatedgradient 3s ease infinite alternate;
+    animation: animatedgradient 3s ease infinite alternate;
   }
 
   @keyframes animatedgradient {
@@ -126,3 +126,5 @@
     }
   }
 }
+
+    

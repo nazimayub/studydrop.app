@@ -155,7 +155,7 @@ export default function LandingPage() {
                 We're helping students save time and understand concepts better.
               </p>
             </div>
-            <div className="mx-auto w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 pt-12">
+            <div className="mx-auto w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 pt-12">
                <Card>
                 <CardContent className="pt-6">
                   <p className="mb-4">"Wasn't sure about this at first, but the catch-up feed is actually useful. I don't have to chase my friends for notes anymore."</p>
@@ -254,5 +254,7 @@ export default function LandingPage() {
     </div>
   );
 }
+
+    
 
     
